@@ -1,0 +1,103 @@
+services:
+  postgres:
+    # pgvector is not used until Phase 6, but developing against the same image
+    # avoids a surprise migration failure later.
+    image: pgvector/pgvector:pg16
+    container_name: janus-postgres
+    environment:
+      POSTGRES_USER: janus
+      POSTGRES_PASSWORD: janus
+      POSTGRES_DB: janus
+    ports:
+      - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U janus -d janus"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    image: janus/gateway:dev
+    profiles: ["full"]
+    environment:
+      JANUS_ENVIRONMENT: local
+      JANUS_REGISTRY_DIR: /app/registry
+      JANUS_GATEWAY_SERVICE_TOKEN: ${JANUS_GATEWAY_SERVICE_TOKEN:-local-dev-token}
+      JANUS_LOG_LEVEL: INFO
+      # host.docker.internal lets the container reach an Ollama running on the host.
+      JANUS_OLLAMA_BASE_URL: ${JANUS_OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+    ports:
+      - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_GATEWAY_PORT:-8081}:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8081/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # Migrations are a one-shot job, not something each API replica does on start:
+  # two containers racing on the same DDL is a bad way to discover a lock.
+  migrate:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    image: janus/api:dev
+    profiles: ["full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      JANUS_ENVIRONMENT: local
+      JANUS_DATABASE_URL: postgresql+asyncpg://janus_app:janus_app@postgres:5432/janus
+      JANUS_MIGRATION_DATABASE_URL: postgresql+asyncpg://janus:janus@postgres:5432/janus
+      JANUS_APP_DB_PASSWORD: janus_app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    image: janus/api:dev
+    profiles: ["full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      gateway:
+        condition: service_started
+    environment:
+      JANUS_ENVIRONMENT: local
+      JANUS_DATABASE_URL: postgresql+asyncpg://janus_app:janus_app@postgres:5432/janus
+      JANUS_MIGRATION_DATABASE_URL: postgresql+asyncpg://janus:janus@postgres:5432/janus
+      JANUS_GATEWAY_URL: http://gateway:8081
+      JANUS_GATEWAY_SERVICE_TOKEN: ${JANUS_GATEWAY_SERVICE_TOKEN:-local-dev-token}
+      JANUS_SESSION_COOKIE_SECURE: "false"
+      JANUS_CORS_ALLOW_ORIGINS: '["http://localhost:${JANUS_WEB_PORT:-3000}"]'
+    ports:
+      - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_API_PORT:-8080}:8080"
+
+  web:
+    build:
+      context: apps/web
+    image: janus/web:dev
+    profiles: ["full"]
+    depends_on:
+      - api
+    environment:
+      # Server-side only: the web app proxies /api/* here, so the browser never
+      # needs to reach the control plane directly. That is what lets a remote
+      # browser work with just this one port published.
+      JANUS_API_URL: http://api:8080
+    ports:
+      - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_WEB_PORT:-3000}:3000"
+
+volumes:
+  postgres-data:

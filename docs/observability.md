@@ -93,7 +93,7 @@ This is what makes "why did you choose this model?" answerable months later:
 
 | Audience | View |
 |----------|------|
-| End user | One safe sentence: *"Selected Sarvam 105B because this request requires long-context reasoning and strong Indic language support."* |
+| End user | One safe sentence: *"Selected a Janus-hosted long-context model because this request requires document reasoning under your private-only policy."* |
 | Organization admin | Selected model, deployment, privacy level, fallback status, cost, and which policy applied |
 | Platform operator | Full record including candidates, exclusions, and score components |
 
@@ -191,7 +191,7 @@ Every alert names a runbook. Alerts without an action are deleted rather than to
 
 ```mermaid
 flowchart TB
-  DS["Evaluation datasets<br/>reasoning · coding · Indic quality · tool calling · safety · long context"]
+  DS["Evaluation datasets<br/>reasoning · coding · tool calling · safety · long context · multilingual"]
   DS --> RUN["Eval run<br/>harness version + dataset version pinned"]
   RUN --> TGT["Targets: model deployments<br/>(A / B / C)"]
   TGT --> GW["Executed through the Model Gateway<br/>same path as production"]
@@ -209,7 +209,7 @@ flowchart TB
 | Harness and dataset versions are pinned on every result | Comparability over time |
 | Only harness-produced numbers may be displayed anywhere | No fabricated or third-party benchmarks ([model-registry.md](./model-registry.md#9-presentation)) |
 | Capability claims are verified, not trusted | A failed verification disables the flag and alerts |
-| Indic language quality is a first-class metric, per language | Core product differentiator; an aggregate "multilingual" score hides failures |
+| Language quality is measured **per language**, not as one multilingual score | An aggregate hides failures; per-language scores are what make the multilingual tier (including Indic) defensible |
 | Safety metrics are tracked per model | Required for enterprise assurance |
 | Evaluation datasets containing customer data require explicit opt-in | Privacy |
 
@@ -256,5 +256,5 @@ All values are proposals for review; retention is configurable per organization 
 2. LLM tracing: LangSmith (fast, external processor implications) or a self-hosted OTLP-based approach for sovereign customers?
 3. Is prompt/completion capture ever enabled? Recommendation: off by default, per-organization opt-in, separately access-controlled, excluded from `RESTRICTED` data.
 4. Cost attribution granularity to expose in-product: organization, user, agent, conversation?
-5. Who owns the evaluation datasets and cadence — and how do we build Indic evaluation sets we can defend publicly?
+5. Who owns the evaluation datasets and cadence? English reasoning, coding, and safety sets are needed for the US launch; per-language sets (including Indic) follow with the multilingual tier.
 6. Do customers get an API for their own routing decisions and usage records (transparency feature), or dashboard-only?

@@ -1,6 +1,3 @@
-# Janus Intelligence — design phase artifacts only.
-# Implementation begins after Phase 0 review; these entries are in place for later phases.
-
 # Secrets — never commit
 .env
 .env.*
@@ -19,6 +16,7 @@ venv/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.import_linter_cache/
 htmlcov/
 .coverage
 dist/
@@ -28,6 +26,7 @@ build/
 # Node
 node_modules/
 .next/
+next-env.d.ts
 out/
 .turbo/
 *.tsbuildinfo

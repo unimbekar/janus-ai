@@ -10,6 +10,20 @@ Companion documents: [model-gateway.md](./model-gateway.md) · [model-routing.md
 
 Janus Intelligence is an **AI operating platform**: a single interface over many models, deployments, agents, and knowledge sources. The product surface is chat and agents; the durable engineering asset is the **Model Gateway** and the **Intelligent Router** beneath it.
 
+### 1.0 Market position
+
+The launch market is the **United States**, mass-market first: individual and team users who want a fast, polished assistant, and companies that need the same assistant without sending confidential data to a third-party provider.
+
+| Consequence for architecture | Detail |
+|------------------------------|--------|
+| Primary region is US | `us-east-1` primary, `us-west-2` secondary; other regions added as markets open ([aws.md](./aws.md#6-environments-and-accounts)) |
+| Frontier models lead the catalog | OpenAI, Anthropic, Gemini, and Bedrock are the default quality tier for US users |
+| Private tier is the enterprise wedge | Janus-hosted open-weight models on Janus GPUs, so `private` mode is a real product, not a promise |
+| Compliance targets are US-oriented | SOC 2 first, then HIPAA and FedRAMP-adjacent requirements as demand appears ([security.md](./security.md#13-privacy-and-compliance-posture)) |
+| Multilingual is a differentiator, not the premise | Sarvam remains a first-class provider and gives Janus unusually strong Indic coverage; it is an expansion advantage, not the launch pitch |
+
+Nothing in the architecture is US-specific: regions, providers, and residency are configuration, so opening a second geography is a deployment exercise rather than a redesign.
+
 ### 1.1 Design goals
 
 | Goal | Meaning | Enforced by |
@@ -436,7 +450,7 @@ Records: [adr/](./adr/).
 ## 14. Open questions
 
 1. **Runtime boundary** — accept Option A (library) for Phase 1–5, or split immediately?
-2. **Primary region and data residency** — is an India region required at launch for sovereign mode, and is it primary or secondary?
+2. **Secondary region timing** — `us-east-1` is primary; is `us-west-2` needed at launch for availability, or after the first enterprise contract with a residency requirement?
 3. **Identity provider** — build local auth first, or start with an external IdP (Cognito/Auth0/WorkOS) for SSO?
 4. **Vector store** — commit to pgvector through Phase 6, or design for OpenSearch from the start?
 5. **Cost attribution granularity** — per organization, per user, per conversation, or per agent run?

@@ -24,7 +24,7 @@ Related: [model-gateway.md](./model-gateway.md) · [model-registry.md](./model-r
 |------|-------------|----------------|
 | Explicit deployment | `sarvam-105b@janus-gpu-aps1` | None — validate policy and health, else error |
 | Explicit model | `sarvam-105b` | Choose among that model's deployments |
-| Capability alias | `janus/reasoning`, `janus/fast`, `janus/indic`, `janus/coding` | Choose within a curated class |
+| Capability alias | `janus/reasoning`, `janus/fast`, `janus/coding`, `janus/multilingual` | Choose within a curated class |
 | Auto | `auto` | Full freedom within policy |
 
 Auto is the intended default consumer experience: the user should not need to know the model ecosystem exists.
@@ -83,19 +83,31 @@ Requirements come from three sources, merged with explicit input winning:
 |--------|---------|
 | Explicit request (`janus.requirements`) | `capabilities: [reasoning, long_context]`, `languages: [hi]` |
 | Agent model policy | `min_capability: reasoning`, `privacy: private` |
-| Inferred from the request | Attached image → `vision`; Devanagari text → `indic`; large context → `long_context`; code fences → `coding` |
+| Inferred from the request | Attached image → `vision`; large context → `long_context`; code fences → `coding`; non-Latin script → `multilingual` (and `indic` for Indic scripts) |
 
 Inference in Phase 3 is deliberately **cheap and deterministic**: script detection, attachment types, token estimates, and simple structural signals. No classifier model in the hot path. A small classifier is a Phase 10 experiment, gated on measured benefit.
 
-Worked example from the brief:
+Worked example — the common US enterprise case:
 
 ```text
-"Analyze this Hindi legal document and summarize it."   (document attached, org policy: confidential)
+"Review this master services agreement and flag unusual indemnity terms."
+(80-page PDF attached, organization policy: confidential data stays private)
 
-Requirements  → languages=[hi], capabilities=[indic, long_context, reasoning, documents]
-Constraints   → classification=CONFIDENTIAL → privacy=private → external providers excluded
-Result        → highest-scoring private deployment with Indic + long context
-Explanation   → "Selected for long-context reasoning with strong Indic support under a private-only policy."
+Requirements  → capabilities=[reasoning, long_context, documents], languages=[en]
+Constraints   → classification=CONFIDENTIAL → mode=private → external providers excluded
+Result        → highest-scoring Janus-hosted deployment with long context
+Explanation   → "Selected for long-context reasoning under your organization's private-only policy."
+```
+
+Second example — the multilingual case, same machinery, no special-casing:
+
+```text
+"इस अनुबंध का सारांश दें।"   (Devanagari input, organization policy: default)
+
+Requirements  → languages=[hi], capabilities=[multilingual, indic, reasoning]
+Constraints   → none beyond platform defaults
+Result        → highest-scoring deployment with measured Hindi quality
+Explanation   → "Selected for strong Hindi-language quality."
 ```
 
 ---
@@ -107,7 +119,7 @@ Capabilities are declared per model (and refined per deployment where the runtim
 | Group | Capabilities |
 |-------|--------------|
 | Reasoning | `reasoning`, `high_quality`, `agentic` |
-| Language | `multilingual`, `indic`, `translation` |
+| Language | `multilingual`, `translation`, `indic` (regional sub-capability) |
 | Coding | `coding`, `structured_output` |
 | Tools | `tool_calling`, `parallel_tool_calls` |
 | Modality | `vision`, `audio_in`, `audio_out`, `documents` |
@@ -151,7 +163,7 @@ Named profiles keep intent legible; policies select a profile and may override i
 | `cost_optimized` | Strong cost penalty | Bulk processing, batch jobs, free tiers |
 | `privacy_first` | Private/sovereign strongly preferred | Regulated organizations |
 
-Cost/latency tiering example (the brief's intent, expressed as policy rather than code): short simple turns land on a fast mid-size model, complex reasoning escalates to a frontier or 105B-class model, specialized coding requests prefer a coding-capable model, and confidential requests are constrained to Janus-private deployments.
+Cost/latency tiering, expressed as policy rather than code: short simple turns land on a fast mid-size model, complex reasoning escalates to a frontier model, specialized coding requests prefer a coding-capable model, and confidential requests are constrained to Janus-private deployments.
 
 ### 6.2 RoutingPolicy scopes
 
@@ -169,8 +181,8 @@ platform default  →  organization  →  team  →  agent  →  request
   "mode": "private",
   "weight_profile": "privacy_first",
   "weights": { "cost": 0.8 },
-  "allow": { "providers": ["sarvam", "janus"], "regions": ["ap-south-1"] },
-  "deny": { "providers": ["openai", "anthropic", "google"] },
+  "allow": { "providers": ["janus"], "regions": ["us-east-1", "us-west-2"] },
+  "deny": { "providers": ["openai", "anthropic", "google", "sarvam"] },
   "limits": { "max_cost_usd_per_request": 0.05, "max_output_tokens": 4096 },
   "classification_rules": {
     "RESTRICTED": { "mode": "sovereign" },
@@ -190,9 +202,9 @@ The ranked remainder of the candidate list **is** the fallback chain — already
 
 ```mermaid
 flowchart TB
-  P["Primary: Sarvam 105B (cloud)"] --> Q{"Success before first token?"}
+  P["Primary: frontier cloud model"] --> Q{"Success before first token?"}
   Q -- yes --> OK["Stream"]
-  Q -- no --> R["Candidate 2: Sarvam 30B"]
+  Q -- no --> R["Candidate 2: fast cloud model, different provider"]
   R --> S{"Success?"}
   S -- yes --> OK
   S -- no --> T["Candidate 3: Janus-hosted open model"]
@@ -247,7 +259,7 @@ Two audiences, two views:
 
 | Audience | Exposure |
 |----------|----------|
-| End user / API caller | One safe sentence: *"Selected Sarvam 105B because this request requires long-context reasoning and strong Indic language support."* |
+| End user / API caller | One safe sentence: *"Selected a Janus-hosted long-context model because this request requires document reasoning under your private-only policy."* |
 | Org admin / Janus operator | Full decision record: candidates, exclusions, scores, policy version |
 
 Never exposed: model chain-of-thought, internal endpoint hostnames, other tenants' data, raw weight values in end-user copy.

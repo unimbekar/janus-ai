@@ -28,9 +28,9 @@ Consequence: an agent definition is portable across infrastructure. The same age
 {
   "id": "agt_01JC…",
   "organization_id": "org_…",
-  "slug": "legal-doc-analyst",
-  "name": "Legal Document Analyst",
-  "description": "Reviews Indian-language legal documents and produces structured summaries.",
+  "slug": "contract-analyst",
+  "name": "Contract Analyst",
+  "description": "Reviews commercial agreements and produces structured summaries with risk flags.",
   "version": 7,
   "status": "published",
   "instructions": "…system prompt…",
@@ -45,7 +45,7 @@ Consequence: an agent definition is portable across infrastructure. The same age
   "model_policy": {
     "mode": "private",
     "selection": "auto",
-    "preferred_models": ["sarvam-105b", "sarvam-30b", "janus/qwen-72b"],
+    "preferred_models": ["janus/llama-70b", "janus/qwen-72b", "sarvam-105b"],
     "min_capability": "reasoning",
     "weight_profile": "quality_first",
     "max_cost_usd_per_run": 0.50,
@@ -130,11 +130,11 @@ class AgentState(TypedDict):
     run_id: str
     organization_id: str
     agent_version_id: str
-    messages: list[Message]          # conversation + tool results
-    scratchpad: list[Step]           # internal reasoning artifacts — never returned to clients
+    messages: list[Message]  # conversation + tool results
+    scratchpad: list[Step]  # internal reasoning artifacts — never returned to clients
     citations: list[Citation]
-    budget: Budget                   # cost + tokens + steps + wall-clock consumed vs. limits
-    resolved_policy: ResolvedPolicy   # snapshot for reproducibility
+    budget: Budget  # cost + tokens + steps + wall-clock consumed vs. limits
+    resolved_policy: ResolvedPolicy  # snapshot for reproducibility
     pending_approval: ToolCall | None
 ```
 
@@ -253,11 +253,11 @@ Create Agent
 
 What should this agent do?
 ┌──────────────────────────────────────────────────────┐
-│ Review Indian-language legal documents and produce   │
-│ structured summaries with citations.                 │
+│ Review commercial agreements and produce structured  │
+│ summaries with risk flags and citations.             │
 └──────────────────────────────────────────────────────┘
 
-Intelligence          ● Auto   ○ Sarvam 105B   ○ Sarvam 30B   ○ Janus Private
+Intelligence          ● Auto   ○ Frontier   ○ Fast   ○ Janus Private
 
 Capabilities          ☑ Reasoning   ☑ Tools   ☐ Web   ☑ Knowledge   ☐ Code   ☐ Vision
 
@@ -285,7 +285,7 @@ Selecting **Private** or **Sovereign** must be honest: the UI shows which deploy
 
 ### 9.1 Marketplace (design-only, Phase 10+)
 
-Future publishing of agents (research, coding, finance, HR, legal, support, Indian-language assistant) requires: semantic versioning, install into an organization with policy re-resolution, explicit tool/knowledge permission grants at install time, provenance and review, and **no** implicit data sharing between publisher and installer. Design constraint now: agents must be serializable to a portable definition with no embedded credentials.
+Future publishing of agents (research, coding, finance, HR, legal, customer support, multilingual assistant) requires: semantic versioning, install into an organization with policy re-resolution, explicit tool/knowledge permission grants at install time, provenance and review, and **no** implicit data sharing between publisher and installer. Design constraint now: agents must be serializable to a portable definition with no embedded credentials.
 
 ---
 

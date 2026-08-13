@@ -183,7 +183,9 @@ Cost controls: scale-to-zero for non-interactive pools, Spot for batch, warm-poo
 | `janus-dev` | Shared integration, provider dev keys, mock backend |
 | `janus-shared` | ECR, CI/CD roles, centralized logs |
 
-Separate accounts give hard blast-radius boundaries and make least-privilege IAM tractable. Region choice — including whether an India region (`ap-south-1`) is primary for sovereign mode — is an open question ([§11](#11-open-questions)).
+Separate accounts give hard blast-radius boundaries and make least-privilege IAM tractable.
+
+**Regions:** `us-east-1` is primary for the US launch market, with `us-west-2` as the secondary for availability and for customers who ask for a west-coast footprint. Region is configuration throughout — the registry, policies, and deployment records all carry region — so opening another geography later is a deployment exercise, not a redesign.
 
 ---
 
@@ -257,7 +259,7 @@ Migration safety follows expand/migrate/contract so a rollback never requires a 
 
 ## 11. Open questions
 
-1. **Primary region.** Is `ap-south-1` primary (favoring Indic latency and residency) with a US secondary, or the reverse?
+1. **Secondary region timing.** Is `us-west-2` stood up at launch for availability, or deferred until a customer requires it?
 2. Does sovereign mode require a dedicated VPC or account per enterprise customer, or is region-pinned shared infrastructure acceptable?
 3. Aurora Serverless v2 in production, or provisioned only?
 4. Karpenter or Cluster Autoscaler for GPU pools in Phase 8?

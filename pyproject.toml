@@ -1,0 +1,123 @@
+[project]
+name = "janus-workspace"
+version = "0.1.0"
+description = "Janus Intelligence monorepo (Phase 1 — Foundation)"
+requires-python = ">=3.12"
+dependencies = [
+    "janus-core",
+    "janus-schemas",
+    "janus-api",
+    "janus-gateway",
+]
+
+[tool.uv.workspace]
+members = ["packages/*", "services/*"]
+
+[tool.uv.sources]
+janus-core = { workspace = true }
+janus-schemas = { workspace = true }
+janus-api = { workspace = true }
+janus-gateway = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "httpx>=0.27",
+    "import-linter>=2.0",
+    "types-pyyaml>=6.0",
+]
+
+# ---------------------------------------------------------------- tooling
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "apps"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "ASYNC", "S", "RUF"]
+ignore = [
+    "S101",  # assert: used deliberately in tests
+    "B008",  # FastAPI Depends() in defaults is idiomatic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S105", "S106", "S311"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+# Each package and service is importable at its own root, the way it is at
+# runtime, so `janus_core` and `api_app` are top-level modules here too.
+mypy_path = "packages/janus-core:packages/janus-schemas:services/api:services/gateway"
+# Tests are verified by running them. Type checking them here would also collide
+# two `conftest` modules at the same dotted path.
+exclude = ["(^|/)tests/"]
+
+[[tool.mypy.overrides]]
+# Strictest settings on the layers that carry the architecture's guarantees.
+module = [
+    "janus_core.*",
+    "janus_schemas.*",
+    "gateway_app.backends.*",
+    "gateway_app.router.*",
+    "gateway_app.registry.*",
+]
+disallow_any_generics = true
+disallow_untyped_calls = true
+
+[[tool.mypy.overrides]]
+# Telemetry is an optional extra; the code degrades to no-ops without it.
+module = ["opentelemetry.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["services/gateway/tests", "services/api/tests", "packages"]
+filterwarnings = ["error::DeprecationWarning:janus_.*"]
+
+# --------------------------------------------------------- boundary rules
+# These contracts are the mechanical enforcement of ADR 0001: provider SDKs
+# and provider HTTP calls may only exist inside gateway backend adapters.
+
+[tool.importlinter]
+root_packages = ["janus_core", "janus_schemas", "gateway_app", "api_app"]
+# Required to name third-party provider SDKs as forbidden modules below.
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Provider access is confined to gateway backend adapters"
+type = "forbidden"
+source_modules = [
+    "api_app",
+    "janus_core",
+    "janus_schemas",
+    "gateway_app.routers",
+    "gateway_app.router",
+    "gateway_app.registry",
+]
+# Top-level distributions only: import-linter cannot name subpackages of
+# external packages, so "google" stands for google-genai and its relatives.
+forbidden_modules = ["openai", "anthropic", "google", "boto3", "botocore", "ollama"]
+
+[[tool.importlinter.contracts]]
+name = "Shared packages never depend on services"
+type = "forbidden"
+source_modules = ["janus_core", "janus_schemas"]
+forbidden_modules = ["api_app", "gateway_app"]
+
+[[tool.importlinter.contracts]]
+name = "Control plane does not import the gateway in-process"
+type = "forbidden"
+source_modules = ["api_app"]
+forbidden_modules = ["gateway_app"]

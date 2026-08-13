@@ -1,0 +1,9 @@
+# Shared development environment on AWS.
+#
+# Only the deterministic backends are enabled today. The first frontier cloud
+# provider is added here in Phase 2, and Janus GPU deployments in Phase 8.
+environment: dev
+
+enabled_deployments:
+  - mock-small-local
+  - mock-reasoning-private

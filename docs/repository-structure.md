@@ -95,7 +95,7 @@ janus-ai/
 │   └── environments/{local,dev,staging,prod}.yaml
 │
 ├── evals/
-│   ├── datasets/                     # versioned eval sets (Indic, reasoning, tools, safety)
+│   ├── datasets/                     # versioned eval sets (reasoning, coding, tools, safety, per-language)
 │   ├── harness/                      # runner, scorers, rubric judges
 │   └── reports/
 │

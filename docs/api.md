@@ -64,8 +64,8 @@ OpenAI-compatible request with optional Janus extensions.
 {
   "model": "auto",
   "messages": [
-    { "role": "system", "content": "You are a careful legal analyst." },
-    { "role": "user", "content": "इस अनुबंध का सारांश दें।" }
+    { "role": "system", "content": "You are a careful contracts analyst." },
+    { "role": "user", "content": "Summarize this master services agreement and flag unusual indemnity terms." }
   ],
   "stream": true,
   "temperature": 0.3,
@@ -78,8 +78,8 @@ OpenAI-compatible request with optional Janus extensions.
   "janus": {
     "mode": "private",
     "classification": "CONFIDENTIAL",
-    "requirements": { "capabilities": ["reasoning", "long_context"], "languages": ["hi"] },
-    "constraints": { "max_cost_usd": 0.05, "max_latency_ms": 20000, "regions": ["ap-south-1"] },
+    "requirements": { "capabilities": ["reasoning", "long_context", "documents"], "languages": ["en"] },
+    "constraints": { "max_cost_usd": 0.05, "max_latency_ms": 20000, "regions": ["us-east-1"] },
     "routing": { "explain": true },
     "conversation_id": "cnv_01JB…",
     "agent_id": "agt_01JB…"
@@ -94,7 +94,7 @@ Non-streaming response:
   "id": "chatcmpl_01JB…",
   "object": "chat.completion",
   "created": 1786800000,
-  "model": "sarvam-105b",
+  "model": "janus/llama-70b",
   "choices": [
     { "index": 0,
       "message": { "role": "assistant", "content": "…" },
@@ -103,15 +103,15 @@ Non-streaming response:
   "usage": { "prompt_tokens": 5120, "completion_tokens": 842, "total_tokens": 5962 },
   "janus": {
     "request_id": "rq_01JB…",
-    "model": "sarvam-105b",
-    "deployment": "janus-gpu-aps1",
-    "provider": "sarvam",
+    "model": "janus/llama-70b",
+    "deployment": "janus-gpu-use1",
+    "provider": "janus",
     "privacy": "private",
-    "region": "ap-south-1",
+    "region": "us-east-1",
     "mode": "private",
     "fallback_used": false,
     "capability_downgraded": [],
-    "routing_explanation": "Selected for long-context reasoning with strong Indic support under a private-only policy.",
+    "routing_explanation": "Selected for long-context document reasoning under your organization's private-only policy.",
     "cost_usd": 0.0123,
     "ttft_ms": 640,
     "total_ms": 8210
@@ -147,17 +147,17 @@ Policy-filtered for the caller — a key restricted to private deployments sees 
         "type": "chat",
         "context_window": 128000,
         "max_output_tokens": 8192,
-        "capabilities": ["reasoning","agentic","tool_calling","long_context","indic","streaming"],
+        "capabilities": ["reasoning","agentic","tool_calling","long_context","multilingual","indic","streaming"],
         "languages": ["en","hi","te","ta"],
         "input_modalities": ["text"],
         "output_modalities": ["text"],
         "deployments": [
-          { "key": "sarvam-cloud-in", "type": "provider_cloud", "privacy": "provider",
-            "region": "ap-south-1", "availability": "ready" },
-          { "key": "janus-gpu-aps1", "type": "janus_gpu", "privacy": "private",
-            "region": "ap-south-1", "availability": "ready" }
+          { "key": "sarvam-cloud", "type": "provider_cloud", "privacy": "provider",
+            "region": "us-east-1", "availability": "ready" },
+          { "key": "janus-gpu-use1", "type": "janus_gpu", "privacy": "private",
+            "region": "us-east-1", "availability": "ready" }
         ],
-        "cost_class": "high",
+        "cost_class": "medium",
         "latency_class": "medium",
         "license": { "name": "…", "attribution_text": "…" }
       }
@@ -265,8 +265,13 @@ Superset for agentic use: server-managed conversation state, tool-execution loop
 | Path | Purpose |
 |------|---------|
 | `GET /healthz` | Liveness (no dependencies) |
-| `GET /readyz` | Readiness (database, cache, registry loaded) |
+| `GET /readyz` | Readiness (database reachable **and** at the expected schema version; registry loaded with at least one routable deployment) |
 | `GET /v1/status` | Public component and provider status |
+
+`/readyz` returns `503` when the instance cannot serve, so a load balancer acts on the status code and an operator reads the body. Two distinctions matter:
+
+- A reachable database at an **unexpected schema version** is not ready. A deploy that outran its migration would otherwise report healthy while every query failed on a missing column.
+- A **gateway** that is down does *not* make the control plane unready. Sign-in, organization management, and billing views still work without inference, and pulling the whole service would turn a partial outage into a total one.
 
 ---
 
@@ -276,11 +281,11 @@ SSE with typed events. Chat completions streams OpenAI-shaped `data:` chunks plu
 
 ```text
 event: janus.routing
-data: {"request_id":"rq_…","model":"sarvam-105b","deployment":"janus-gpu-aps1","fallback_used":false}
+data: {"request_id":"rq_…","model":"janus/llama-70b","deployment":"janus-gpu-use1","fallback_used":false}
 
-data: {"id":"chatcmpl_…","object":"chat.completion.chunk","choices":[{"delta":{"content":"इस "}}]}
+data: {"id":"chatcmpl_…","object":"chat.completion.chunk","choices":[{"delta":{"content":"The "}}]}
 
-data: {"id":"chatcmpl_…","object":"chat.completion.chunk","choices":[{"delta":{"content":"अनुबंध"}}]}
+data: {"id":"chatcmpl_…","object":"chat.completion.chunk","choices":[{"delta":{"content":"agreement"}}]}
 
 event: janus.usage
 data: {"input_tokens":5120,"output_tokens":842,"cost_usd":0.0123,"ttft_ms":640}
@@ -326,7 +331,7 @@ Agent runs stream richer events: `janus.step.started`, `janus.tool.called`, `jan
       "constraint": "privacy",
       "requested_mode": "private",
       "candidates_excluded": 7,
-      "hint": "Enable a Janus-hosted deployment with Indic long-context support, or relax the policy."
+      "hint": "Enable a Janus-hosted long-context deployment, or relax the policy."
     },
     "retryable": false
   }

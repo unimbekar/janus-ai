@@ -12,7 +12,7 @@ Related: [model-gateway.md](./model-gateway.md) · [model-routing.md](./model-ro
 
 | Entity | Grain | Purpose |
 |--------|-------|---------|
-| `Provider` | Vendor or hosting authority | Sarvam, OpenAI, Anthropic, Google, AWS Bedrock, Janus, Meta, Alibaba, DeepSeek |
+| `Provider` | Vendor or hosting authority | OpenAI, Anthropic, Google, AWS Bedrock, Sarvam, Janus, Meta, Alibaba, DeepSeek |
 | `Model` | Logical model (weights + family + version) | Capabilities, languages, license, context window |
 | `ModelDeployment` | Physical servable endpoint | Backend, endpoint, region, hardware, privacy, health |
 | `ModelAlias` | Stable name → model or class | `janus/fast`, `janus/reasoning`, legacy names |
@@ -27,6 +27,47 @@ The registry is **platform-scoped**, not per-tenant. Organizations get *visibili
 
 ## 2. Model record
 
+Frontier cloud model — the default quality tier for the US launch market:
+
+```json
+{
+  "id": "mdl_01JBW…",
+  "slug": "frontier-reasoning-xl",
+  "display_name": "Frontier Reasoning XL",
+  "family": "vendor-frontier",
+  "version": "2026-06",
+  "provider": "openai",
+  "type": "chat",
+  "context_window": 200000,
+  "max_output_tokens": 32768,
+  "input_modalities": ["text", "image"],
+  "output_modalities": ["text"],
+  "languages": ["en", "es", "fr", "de", "pt", "ja", "zh"],
+  "capabilities": {
+    "reasoning": true,
+    "agentic": true,
+    "tool_calling": true,
+    "structured_output": true,
+    "long_context": true,
+    "multilingual": true,
+    "streaming": true,
+    "coding": true,
+    "vision": true,
+    "embeddings": false
+  },
+  "cost_class": "high",
+  "latency_class": "medium",
+  "tier": "frontier",
+  "status": "active",
+  "license_id": "lic_provider_tos",
+  "metadata_verified": false,
+  "notes": "Slug, context window, and pricing are placeholders until the provider contract is signed.",
+  "created_at": "2026-08-13T00:00:00Z"
+}
+```
+
+Multilingual tier — Sarvam remains a first-class provider and gives Janus unusually strong Indic coverage:
+
 ```json
 {
   "id": "mdl_01JBX…",
@@ -40,8 +81,6 @@ The registry is **platform-scoped**, not per-tenant. Organizations get *visibili
   "architecture": "transformer-moe",
   "context_window": 128000,
   "max_output_tokens": 8192,
-  "input_modalities": ["text"],
-  "output_modalities": ["text"],
   "languages": ["en", "hi", "te", "ta", "kn", "ml", "mr", "bn", "gu", "pa", "or"],
   "capabilities": {
     "reasoning": true,
@@ -49,24 +88,23 @@ The registry is **platform-scoped**, not per-tenant. Organizations get *visibili
     "tool_calling": true,
     "structured_output": true,
     "long_context": true,
-    "indic": true,
     "multilingual": true,
+    "indic": true,
     "streaming": true,
-    "coding": true,
-    "vision": false,
-    "embeddings": false
+    "coding": true
   },
-  "cost_class": "high",
+  "cost_class": "medium",
   "latency_class": "medium",
   "tier": "recommended",
   "status": "active",
   "license_id": "lic_…",
-  "notes": "Verify parameter count, context window, and language list against provider documentation before Phase 2.",
+  "metadata_verified": false,
+  "notes": "Verify parameter count, context window, and language list against provider documentation before Phase 3.",
   "created_at": "2026-08-13T00:00:00Z"
 }
 ```
 
-Janus-hosted open model:
+Janus-hosted open model — the private tier that makes `private` mode real:
 
 ```json
 {
@@ -80,7 +118,7 @@ Janus-hosted open model:
   "context_window": 131072,
   "capabilities": {
     "reasoning": true, "coding": true, "tool_calling": true,
-    "long_context": true, "streaming": true, "indic": false
+    "long_context": true, "streaming": true, "multilingual": true, "indic": false
   },
   "cost_class": "fixed",
   "latency_class": "low",
@@ -115,19 +153,19 @@ Unverified values carry a `notes` field and appear in the admin UI as unverified
 ```text
 model_slug        := [ "janus/" ] name
 deployment_ref    := model_slug "@" deployment_key
-alias             := "janus/" class_name          ; janus/fast, janus/reasoning, janus/indic
+alias             := "janus/" class_name          ; janus/fast, janus/reasoning, janus/multilingual
 ```
 
 | Example | Resolves to |
 |---------|-------------|
 | `sarvam-105b` | Model; router picks the deployment |
-| `sarvam-105b@sarvam-cloud-in` | Sarvam's own API in India |
-| `sarvam-105b@janus-gpu-aps1` | Self-hosted on Janus GPU, ap-south-1 |
+| `sarvam-105b@sarvam-cloud` | Sarvam's own hosted API |
+| `sarvam-105b@janus-gpu-use1` | Self-hosted on Janus GPU, us-east-1 |
 | `janus/llama-70b` | Janus-hosted Llama |
 | `janus/fast` | Alias → curated fast class |
 | `auto` | Router selects freely within policy |
 
-The same weights served in two places are **one model, two deployments** — the user-visible distinction ("Sarvam 105B Cloud" vs. "Sarvam 105B Janus GPU") is rendered from deployment metadata, while application code stays provider-agnostic.
+The same weights served in two places are **one model, two deployments** — the user-visible distinction ("Cloud" vs. "Janus Hosted") is rendered from deployment metadata, while application code stays provider-agnostic.
 
 ---
 
@@ -136,15 +174,15 @@ The same weights served in two places are **one model, two deployments** — the
 ```json
 {
   "id": "dep_01JBZ…",
-  "key": "janus-gpu-aps1",
-  "model_id": "mdl_01JBX…",
+  "key": "janus-gpu-use1",
+  "model_id": "mdl_01JBY…",
   "backend": "vllm",
   "protocol": "openai_compatible",
-  "endpoint": "http://sarvam-105b.inference.svc.cluster.local:8000/v1",
-  "region": "ap-south-1",
+  "endpoint": "http://llama-70b.inference.svc.cluster.local:8000/v1",
+  "region": "us-east-1",
   "deployment_type": "janus_gpu",
   "privacy_level": "private",
-  "data_residency": ["IN"],
+  "data_residency": ["US"],
   "hardware": { "gpu_type": "H100", "gpu_count": 8, "node_pool": "gpu-large" },
   "replicas": { "min": 1, "max": 4, "current": 2 },
   "max_context": 128000,
@@ -208,7 +246,7 @@ flowchart TB
   LOK -- yes --> SRC["Source verification<br/>trusted origin · weights SHA-256 pinned"]
   SRC --> SCAN["Security scan<br/>serialization format · no arbitrary code · CVE check"]
   SCAN --> STAGE["Register as status=draft<br/>staging deployment only"]
-  STAGE --> EVAL["Evaluation harness<br/>quality · Indic · tools · safety · latency"]
+  STAGE --> EVAL["Evaluation harness<br/>quality · reasoning · coding · tools · safety · latency · multilingual"]
   EVAL --> BENCH["Performance benchmark<br/>throughput · TTFT · cost per 1M tokens"]
   BENCH --> CONF["Adapter conformance suite"]
   CONF --> REV["Approval<br/>ML + security sign-off"]
@@ -263,20 +301,19 @@ type: chat
 tier: recommended
 context_window: 128000          # VERIFY against provider docs
 languages: [en, hi, te, ta, kn, ml, mr, bn, gu, pa, or]
-capabilities: [reasoning, agentic, tool_calling, structured_output, long_context, indic, streaming]
+capabilities: [reasoning, agentic, tool_calling, structured_output, long_context, multilingual, indic, streaming]
 license: lic_sarvam_open
 deployments:
-  - key: sarvam-cloud-in
+  - key: sarvam-cloud
     backend: sarvam_api
     deployment_type: provider_cloud
     privacy_level: provider
-    region: ap-south-1
     credentials_ref: secretsmanager://janus/prod/providers/sarvam
-  - key: janus-gpu-aps1
+  - key: janus-gpu-use1
     backend: vllm
     deployment_type: janus_gpu
     privacy_level: private
-    region: ap-south-1
+    region: us-east-1
     hardware: { gpu_type: H100, gpu_count: 8, node_pool: gpu-large }
     enabled_from_phase: 8
 ```

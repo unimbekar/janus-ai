@@ -1,0 +1,9 @@
+# Production.
+#
+# Intentionally empty: no model is servable in production until a real provider
+# deployment is reviewed and added here, which happens in Phase 2. An empty
+# catalog makes the gateway report itself unready rather than quietly serving a
+# mock model to a paying customer.
+environment: prod
+
+enabled_deployments: []

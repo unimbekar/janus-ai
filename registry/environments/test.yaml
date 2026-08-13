@@ -1,0 +1,7 @@
+# Automated tests: deterministic backends only, so no test can depend on a
+# network, a GPU, or a provider account.
+environment: test
+
+enabled_deployments:
+  - mock-small-local
+  - mock-reasoning-private

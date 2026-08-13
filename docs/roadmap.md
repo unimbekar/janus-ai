@@ -1,14 +1,14 @@
 # Implementation Roadmap
 
-**Status:** Draft for review (Phase 0) · **Last updated:** 2026-08-13
+**Status:** Phases 0 and 1 complete · **Last updated:** 2026-08-13
 
-Ten phases. Each is a reviewable increment with explicit exit criteria; none begins until the previous one meets them. Phase 0 (this design set) must be approved before Phase 1.
+Ten phases. Each is a reviewable increment with explicit exit criteria; none begins until the previous one meets them.
 
 Every phase ships: objective · architectural decisions · files created/modified · implementation · tests · security review · performance review · documentation.
 
 ---
 
-## Phase 0 — Design *(current)*
+## Phase 0 — Design ✓
 
 | | |
 |---|---|
@@ -19,28 +19,31 @@ Every phase ships: objective · architectural decisions · files created/modifie
 
 ---
 
-## Phase 1 — Foundation
+## Phase 1 — Foundation ✓
+
+Diagrams of what this phase actually produced are in [phase-1.md](./phase-1.md).
 
 | | |
 |---|---|
 | **Objective** | A deployable skeleton with the abstractions that matter already in place |
-| **Scope** | Monorepo and tooling · Docker Compose · Next.js shell · FastAPI `janus-api` and `janus-gateway` · Aurora-compatible Postgres schema (core + registry) with Alembic · Redis · authentication (email/password, sessions, API keys) · organizations and membership · `ModelBackend` interface with **`MockBackend` and `OllamaBackend`** · registry-as-code loader · OpenTelemetry wiring · structured logging · CI |
+| **Scope** | Monorepo and tooling · Docker Compose · Next.js shell · FastAPI `janus-api` and `janus-gateway` · Aurora-compatible Postgres schema (core + registry) with Alembic · authentication (email/password, sessions, API keys) · organizations and membership · `ModelBackend` interface with **`MockBackend` and `OllamaBackend`** · registry-as-code loader · OpenTelemetry wiring · structured logging · CI |
 | **Key decisions** | Provider abstraction exists from the first commit; runtime is a library inside `janus-api` ([ADR 0004](./adr/0004-ai-runtime-boundary.md)) |
-| **Tests** | Unit, auth integration, RLS cross-tenant tests, conformance suite green on mock + Ollama |
-| **Security review** | Password hashing, session and key handling, RLS enforcement, no secrets in repo |
-| **Performance review** | Gateway overhead baseline measured against the mock backend |
-| **Exit criteria** | `make up` gives a working local stack; a request flows web → api → gateway → Ollama; cross-tenant access tests pass; CI enforces boundary rules |
+| **Deferred** | **Redis** — nothing caches, rate-limits, or holds shared state until Phase 3, and an unused dependency is an unused attack surface. Sessions live in Postgres, and health state is per-instance and rebuilt on start. |
+| **Tests** | 132 tests: routing and policy resolution, streaming and fallback, auth, RLS cross-tenant isolation, browser SSE parsing, adapter conformance on mock (Ollama conformance opt-in via `JANUS_TEST_OLLAMA=1`) |
+| **Security review** | Argon2id password and key hashing · lookup-hash indirection so key authentication needs no cross-tenant table scan · `SECURITY DEFINER` authentication function returning only authentication fields · RLS `FORCE`d on tenant tables and the service role holding neither `BYPASSRLS` nor `SUPERUSER` · append-only audit events · no secrets in the repository |
+| **Performance review** | Gateway overhead against the mock backend is dominated by policy resolution, which is in-process and allocation-light; there is no network hop between resolution and dispatch. Measured budgets (router p95 < 10 ms, gateway p95 < 25 ms) are Phase 3 exit criteria, when the decision log exists to measure them with. |
+| **Exit criteria** | `make stack-up` gives a working local stack ✓ · a request flows web → api → gateway → model ✓ · cross-tenant access tests pass ✓ · CI enforces boundary rules ✓ |
 
 ---
 
-## Phase 2 — Chat
+## Phase 2 — Chat *(next)*
 
 | | |
 |---|---|
 | **Objective** | A chat product people can use daily |
-| **Scope** | Conversations and messages · SSE streaming end to end · **Sarvam adapter** (first cloud provider) · model selector · conversation history · cancellation and regeneration · Markdown, code blocks, tables · dark/light themes · keyboard shortcuts · attachments (upload + storage, parsing deferred) |
-| **Key decisions** | Web uses `/v1/conversations/{id}/messages`, not raw chat completions; model attribution shown on every assistant message |
-| **Tests** | Streaming, cancellation mid-stream, Indic script round-trip, message ordering under concurrency |
+| **Scope** | Conversations and messages · SSE streaming end to end · **first frontier cloud adapter** (OpenAI or Anthropic — the quality tier US users expect) · model selector · conversation history · cancellation and regeneration · Markdown, code blocks, tables · dark/light themes · keyboard shortcuts · attachments (upload + storage, parsing deferred) |
+| **Key decisions** | Web uses `/v1/conversations/{id}/messages`, not raw chat completions; model attribution shown on every assistant message; frontier provider leads because the launch market is US mass-market, with Sarvam and the rest arriving in Phase 3 |
+| **Tests** | Streaming, cancellation mid-stream, non-Latin script round-trip, message ordering under concurrency |
 | **Security review** | XSS in rendered Markdown, upload validation and scanning, classification defaults |
 | **Performance review** | TTFT p95 through the full path; streaming overhead per chunk |
 | **Exit criteria** | Streaming chat with Sarvam and Ollama, persisted history, correct model attribution, no provider SDK imports outside the gateway |
@@ -52,7 +55,7 @@ Every phase ships: objective · architectural decisions · files created/modifie
 | | |
 |---|---|
 | **Objective** | The gateway becomes a real product surface, not an internal detail |
-| **Scope** | Model registry and admin CRUD · model catalog UI and model detail pages · adapters for **OpenAI, Anthropic, Gemini, Bedrock** · public OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/providers`) · health tracking and state machine · deterministic router with filters and scoring · **Auto mode** · capability aliases · routing decision log · usage records and cost calculation · rate limiting |
+| **Scope** | Model registry and admin CRUD · model catalog UI and model detail pages · remaining adapters (**Anthropic/OpenAI, Gemini, Bedrock, Sarvam**) · public OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/providers`) · health tracking and state machine · deterministic router with filters and scoring · **Auto mode** · capability aliases · routing decision log · usage records and cost calculation · rate limiting |
 | **Key decisions** | Constraints hard / preferences soft; decision log from day one ([model-routing.md](./model-routing.md)) |
 | **Tests** | Adapter conformance across all cloud providers, property tests on constraint safety, golden routing fixtures |
 | **Security review** | Credential isolation, egress payload minimization, policy-filtered `/v1/models` |
@@ -96,7 +99,7 @@ Every phase ships: objective · architectural decisions · files created/modifie
 | **Objective** | Grounded answers with citations |
 | **Scope** | Document upload and parsing (PDF, DOCX, HTML, text) · structure- and script-aware chunking · embeddings through the gateway · pgvector storage with HNSW · hybrid search · reranking · citation binding · knowledge base management UI · ingestion pipeline on workers |
 | **Key decisions** | Embedding model pinned per knowledge base; mixed-version search refused |
-| **Tests** | Ingestion idempotency, dedupe, citation accuracy, Indic-script chunking, retrieval latency |
+| **Tests** | Ingestion idempotency, dedupe, citation accuracy, non-Latin script chunking, retrieval latency |
 | **Security review** | Document classification propagation, org-scoped vector search, pre-signed URL scoping |
 | **Performance review** | Retrieval p95, ingestion throughput, index size growth |
 | **Exit criteria** | Documents in, cited answers out, org-isolated retrieval verified, re-embedding path exercised |
@@ -136,7 +139,7 @@ Every phase ships: objective · architectural decisions · files created/modifie
 | | |
 |---|---|
 | **Objective** | Sellable to regulated organizations |
-| **Scope** | Full RBAC · SSO (OIDC/SAML) and SCIM · teams · full policy engine with the constraint set in [security.md §7](./security.md#7-policy-engine) · policy simulation endpoint · data classification enforcement · **sovereign mode** · audit log UI and export · quotas and cost ceilings · usage dashboards · bring-your-own-key (candidate) · customer-managed KMS (candidate) · SOC 2 control readiness |
+| **Scope** | Full RBAC · SSO (OIDC/SAML) and SCIM · teams · full policy engine with the constraint set in [security.md §7](./security.md#7-policy-engine) · policy simulation endpoint · data classification enforcement · **sovereign mode** · audit log UI and export · quotas and cost ceilings · usage dashboards · bring-your-own-key (candidate) · customer-managed KMS (candidate) · **SOC 2 Type II control readiness**, HIPAA/BAA path where healthcare demand appears |
 | **Key decisions** | Constraints resolve most-restrictive-wins; no silent policy relaxation anywhere |
 | **Tests** | Property tests on policy resolution, sovereign-mode egress verification, audit completeness |
 | **Security review** | External audit readiness assessment; penetration test |
@@ -150,7 +153,7 @@ Every phase ships: objective · architectural decisions · files created/modifie
 | | |
 |---|---|
 | **Objective** | Differentiation through breadth and measured intelligence |
-| **Scope** | Multimodal (vision input, documents as first-class) · voice (speech-to-text and text-to-speech behind the same gateway) · advanced agents (planning, multi-agent delegation, long-term memory) · agent marketplace foundations · evaluation harness at scale with Indic evaluation sets · evaluation-driven routing weight tuning · opt-in learned routing with A/B measurement · web search tool |
+| **Scope** | Multimodal (vision input, documents as first-class) · voice (speech-to-text and text-to-speech behind the same gateway) · advanced agents (planning, multi-agent delegation, long-term memory) · agent marketplace foundations · evaluation harness at scale with per-language evaluation sets (English first, then the multilingual tier including Indic) · evaluation-driven routing weight tuning · opt-in learned routing with A/B measurement · web search tool |
 | **Key decisions** | Learned routing ships only if measured to help without weakening constraint safety |
 | **Tests** | Modality conformance, voice latency, routing A/B integrity |
 | **Security review** | Audio and image handling, memory privacy controls, marketplace permission model |

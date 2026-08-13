@@ -1,0 +1,42 @@
+# Second deterministic model, so routing, fallback, and catalog filtering have
+# something to choose between without any network dependency.
+slug: janus/mock-reasoning
+display_name: Janus Mock Reasoning
+provider: janus
+family: mock
+type: chat
+tier: experimental
+context_window: 131072
+max_output_tokens: 8192
+languages: [en, es, hi]
+capabilities:
+  - streaming
+  - reasoning
+  - long_context
+  - documents
+  - multilingual
+  - indic
+  - privacy
+cost_class: free
+latency_class: medium
+status: active
+metadata_verified: true
+aliases:
+  - janus/reasoning
+  - janus/multilingual
+license:
+  name: Janus Internal
+  commercial_use: true
+notes: Deterministic responses for tests and local development. Not a real model.
+deployments:
+  # Presented as a private Janus-hosted deployment so `private` and `sovereign`
+  # mode have an eligible target in local development.
+  - key: mock-reasoning-private
+    backend: mock
+    protocol: native
+    deployment_type: janus_cpu
+    privacy_level: private
+    region: us-east-1
+    data_residency: [US]
+    max_context: 131072
+    priority: 20

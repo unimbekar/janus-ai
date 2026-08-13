@@ -143,7 +143,7 @@ Rules: no secret in Git, environment files committed, container images, logs, er
 | `PUBLIC` | No confidentiality requirement | Any permitted deployment |
 | `INTERNAL` | Ordinary business data (default) | Any permitted deployment |
 | `CONFIDENTIAL` | Sensitive business data | Private deployments preferred; external only if the organization opts in |
-| `RESTRICTED` | Regulated, contractual, or personal-sensitive | **Janus-private only**; never external providers |
+| `RESTRICTED` | Regulated or contractually restricted (PHI, PCI, material non-public information, sensitive personal data) | **Janus-private only**; never external providers |
 
 Classification is determined by, in precedence order: explicit request value → knowledge base or document classification in context → conversation setting → organization default. **The highest classification present in the request context wins.** Attachments and retrieved chunks can therefore raise a request's classification.
 
@@ -209,7 +209,7 @@ Policies express what an organization permits, and are enforced at the gateway b
 |-------------|---------|
 | Allowed / denied models | Only `sarvam-*` and `janus/*` |
 | Allowed / denied providers | Deny all external commercial providers |
-| Allowed regions / residency | `ap-south-1` only |
+| Allowed regions / residency | US regions only (`us-east-1`, `us-west-2`) |
 | Allowed data classifications per destination | `RESTRICTED` → private deployments only |
 | Execution mode ceiling | `private` |
 | Cost ceilings | Per request, per run, per period |
@@ -218,7 +218,7 @@ Policies express what an organization permits, and are enforced at the gateway b
 | Fallback behavior | Cross-provider permitted or not |
 | Tool constraints | Allowed tool kinds, approval requirements |
 
-Worked example — a finance organization allows Sarvam-private and Janus-private models and blocks external commercial providers. A user asking a general question in that organization is served by a private deployment; if none is healthy, the request fails with `no_eligible_model` rather than silently reaching an external provider.
+Worked example — a US financial services organization allows Janus-private deployments only and blocks all external commercial providers. A user asking a general question is served by a private deployment; if none is healthy, the request fails with `no_eligible_model` rather than silently reaching an external provider.
 
 ---
 
@@ -301,12 +301,12 @@ Each entry carries actor, action, resource, IP, timestamp, and before/after wher
 | Item | Position |
 |------|----------|
 | Privacy claims | Only claims the infrastructure actually guarantees. "Data stays within Janus infrastructure" is used **only** for `private` deployments in private subnets with no external egress |
-| Data residency | Enforced by deployment region filters when an organization sets residency requirements |
-| Sovereign mode | External providers structurally excluded; region-pinned Janus deployments only |
+| Data residency | Enforced by deployment region filters; US-only residency is the default posture for the launch market, and other geographies are configuration rather than redesign |
+| Sovereign mode | External providers structurally excluded; region-pinned Janus deployments only. Sold to US regulated buyers (healthcare, financial services, government-adjacent) as "your data never leaves infrastructure we operate" |
 | Training on customer data | **Never**, without explicit opt-in per organization; the default is no training and no human review |
 | Deletion | User deletion of conversations and documents removes content and derived chunks; verified erasure workflow for regulatory requests, including backups within the retention window |
 | Subprocessors | Every AI provider is a subprocessor; the list is published and per-provider retention posture is documented |
-| Certifications | SOC 2 readiness targeted in Phase 9; controls above are designed with that in mind, and nothing is claimed before audit |
+| Certifications | SOC 2 Type II readiness targeted in Phase 9 as the US enterprise entry requirement, HIPAA with a BAA where healthcare demand appears; controls above are designed with that in mind, and **nothing is claimed before audit** |
 
 ---
 
@@ -332,5 +332,5 @@ Each entry carries actor, action, resource, IP, timestamp, and before/after wher
 2. Should conversation content ever be visible to organization admins, and if so under what audited, user-visible mechanism?
 3. Do we offer customer-managed KMS keys at launch or in Phase 9?
 4. Is optional prompt/completion capture (for debugging and evaluation) acceptable at all, and if so with what default (recommendation: off, per-org opt-in, separately access-controlled)?
-5. Which compliance target drives Phase 9 scope: SOC 2, ISO 27001, Indian DPDP Act, or several?
+5. Compliance sequencing for the US market: SOC 2 Type II first (assumed), then HIPAA with a BAA, then state privacy laws (CCPA/CPRA) — is FedRAMP ever in scope, and does any design partner need ISO 27001?
 6. Bring-your-own-key: which providers, and what is the isolation guarantee we are willing to state contractually?

@@ -598,7 +598,7 @@ Notes:
 
 - Every chunk records its embedding model and version. Searching across mixed embedding versions is refused; changing a base's embedding model triggers a re-embedding job.
 - `vector(1536)` is a placeholder. Because pgvector requires a fixed dimension per column, differing dimensions need either per-dimension partitions/tables or a normalization decision — see [§8](#8-vector-storage-decision-pending).
-- `simple` text-search config is a deliberate starting point for Indic scripts, where stemming configs are unavailable or harmful; per-language configs are evaluated in Phase 6.
+- `english` is the expected default config for the launch market; `simple` is used for non-Latin scripts where stemming configs are unavailable or harmful. Per-language configs are selected per knowledge base in Phase 6.
 
 ---
 

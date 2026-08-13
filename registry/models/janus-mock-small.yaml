@@ -1,0 +1,35 @@
+# Deterministic test model. No network, no GPU, no provider account.
+# CI exercises the entire request path against this model.
+slug: janus/mock-small
+display_name: Janus Mock Small
+provider: janus
+family: mock
+type: chat
+tier: experimental
+context_window: 8192
+max_output_tokens: 2048
+parameters: n/a
+languages: [en]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - multilingual
+cost_class: free
+latency_class: low
+status: active
+metadata_verified: true
+aliases:
+  - janus/fast
+license:
+  name: Janus Internal
+  commercial_use: true
+notes: Deterministic responses for tests and local development. Not a real model.
+deployments:
+  - key: mock-small-local
+    backend: mock
+    protocol: native
+    deployment_type: local_dev
+    privacy_level: local
+    max_context: 8192
+    priority: 10

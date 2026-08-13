@@ -1,0 +1,10 @@
+# Which deployments exist in local development.
+#
+# A deployment absent from this list does not exist in this environment, so a
+# developer without a GPU or a provider account still gets a working platform.
+environment: local
+
+enabled_deployments:
+  - mock-small-local
+  - mock-reasoning-private
+  - ollama-llama31-8b

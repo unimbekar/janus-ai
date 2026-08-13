@@ -1,0 +1,53 @@
+# Local open-weight model served by Ollama on the developer's machine.
+#
+# Pull it before use:   ollama pull llama3.1:8b
+#
+# Context window and capability claims below are the published figures for
+# Llama 3.1 8B Instruct and have NOT been verified by the Janus evaluation
+# harness, so metadata_verified is false and the catalog shows them as
+# unverified.
+slug: janus/llama3.1-8b
+display_name: Llama 3.1 8B (Local)
+provider: meta
+family: llama
+version: "3.1"
+parameters: 8B
+type: chat
+tier: open_source
+context_window: 131072
+max_output_tokens: 4096
+languages: [en, de, fr, it, pt, hi, es, th]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - long_context
+  - multilingual
+cost_class: free
+latency_class: medium
+status: active
+metadata_verified: false
+notes: >-
+  Published figures, not yet verified by the Janus evaluation harness. Effective
+  context depends on available memory and the Ollama num_ctx setting.
+license:
+  name: Llama 3.1 Community License
+  attribution_text: Built with Llama
+  commercial_use: true
+deployments:
+  - key: ollama-llama31-8b
+    backend: ollama
+    protocol: openai_compatible
+    deployment_type: local_dev
+    privacy_level: local
+    endpoint: ${JANUS_OLLAMA_BASE_URL:-http://localhost:11434/v1}
+    provider_model_id: llama3.1:8b
+    # Conservative: an 8B model at full 128k context will not fit on a typical
+    # developer machine.
+    max_context: 32768
+    max_concurrency: 2
+    priority: 50
+    # Nothing is loaded until the first request, so start as warming and let the
+    # health probe promote it.
+    initial_health: warming

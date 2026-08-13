@@ -106,8 +106,8 @@ Every model runtime implements one interface. This is the mechanism that makes p
 class ModelBackend(ABC):
     """One implementation per provider or inference runtime."""
 
-    backend_id: str          # "vllm", "sarvam_api", "bedrock", …
-    protocol: Protocol       # OPENAI_COMPATIBLE | NATIVE
+    backend_id: str  # "vllm", "sarvam_api", "bedrock", …
+    protocol: Protocol  # OPENAI_COMPATIBLE | NATIVE
 
     @abstractmethod
     async def generate(
@@ -159,7 +159,7 @@ Provider abstractions leak through feature differences. A shared test suite runs
 | Timeout | Typed error inside budget, no socket leak |
 | Auth failure | `provider_auth_failed`, never leaks the key |
 | Rate limited | `provider_rate_limited` with retry hint |
-| Multilingual (Indic scripts) | Byte-safe round trip, no mojibake |
+| Multilingual (non-Latin scripts, incl. Indic and CJK) | Byte-safe round trip, no mojibake |
 
 A provider that cannot satisfy a case must **declare the capability absent** so the router stops offering it. Silent degradation is forbidden.
 
@@ -203,8 +203,8 @@ Extensions live in a namespaced field so OpenAI clients ignore them safely:
   "janus": {
     "mode": "private",
     "classification": "CONFIDENTIAL",
-    "requirements": { "capabilities": ["reasoning", "long_context"], "languages": ["hi"] },
-    "constraints": { "max_cost_usd": 0.05, "max_latency_ms": 8000, "regions": ["ap-south-1"] },
+    "requirements": { "capabilities": ["reasoning", "long_context"], "languages": ["en"] },
+    "constraints": { "max_cost_usd": 0.05, "max_latency_ms": 8000, "regions": ["us-east-1"] },
     "routing": { "explain": true },
     "agent_id": "agt_…",
     "conversation_id": "cnv_…"
@@ -216,13 +216,13 @@ Responses echo the resolved selection:
 
 ```json
 {
-  "model": "sarvam-105b",
+  "model": "janus/llama-70b",
   "janus": {
     "request_id": "rq_…",
-    "deployment": "janus-gpu-aps1",
+    "deployment": "janus-gpu-use1",
     "privacy": "private",
     "fallback_used": false,
-    "routing_explanation": "Selected for long-context reasoning with strong Indic support under a private-only policy.",
+    "routing_explanation": "Selected for long-context reasoning under your organization's private-only policy.",
     "usage_cost_usd": 0.0123,
     "capability_downgraded": []
   }
@@ -240,9 +240,9 @@ The `model` field accepts four forms, resolved in order:
 | Form | Example | Meaning |
 |------|---------|---------|
 | `auto` | `auto` | Router selects freely within policy |
-| Capability alias | `janus/fast`, `janus/reasoning`, `janus/indic` | Router selects within a curated class |
-| Model slug | `sarvam-105b`, `janus/llama-70b` | Specific model; router picks the deployment |
-| Deployment-qualified | `sarvam-105b@janus-gpu-aps1` | Specific model **and** deployment; admin/eval use |
+| Capability alias | `janus/fast`, `janus/reasoning`, `janus/multilingual` | Router selects within a curated class |
+| Model slug | `janus/llama-70b`, `sarvam-105b` | Specific model; router picks the deployment |
+| Deployment-qualified | `janus/llama-70b@janus-gpu-use1` | Specific model **and** deployment; admin/eval use |
 
 Even an explicit slug still passes through policy and health gating: a user cannot name their way past a restriction, and a caller pinning a deployment gets a typed error rather than a silent substitution if it is ineligible.
 
