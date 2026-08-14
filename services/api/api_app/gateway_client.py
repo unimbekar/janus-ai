@@ -79,6 +79,75 @@ class GatewayClient:
         )
         return response.json()
 
+    async def get_model(
+        self,
+        model_id: str,
+        *,
+        organization_id: str,
+        request_id: str,
+        mode: ExecutionMode,
+        classification: Classification = Classification.INTERNAL,
+        actor_id: str | None = None,
+    ) -> dict[str, Any]:
+        response = await self._request(
+            "GET",
+            f"/v1/models/{model_id}",
+            headers=self._context_headers(
+                organization_id=organization_id,
+                request_id=request_id,
+                actor_id=actor_id,
+                mode=mode,
+                classification=classification,
+            ),
+        )
+        return response.json()
+
+    async def list_providers(
+        self,
+        *,
+        organization_id: str,
+        request_id: str,
+        mode: ExecutionMode,
+        classification: Classification = Classification.INTERNAL,
+        actor_id: str | None = None,
+    ) -> dict[str, Any]:
+        response = await self._request(
+            "GET",
+            "/v1/providers",
+            headers=self._context_headers(
+                organization_id=organization_id,
+                request_id=request_id,
+                actor_id=actor_id,
+                mode=mode,
+                classification=classification,
+            ),
+        )
+        return response.json()
+
+    async def embeddings(
+        self,
+        payload: dict[str, Any],
+        *,
+        organization_id: str,
+        request_id: str,
+        mode: ExecutionMode,
+        classification: Classification = Classification.INTERNAL,
+        actor_id: str | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        response = await self._request(
+            "POST",
+            "/v1/embeddings",
+            json=payload,
+            headers=self._context_headers(
+                organization_id=organization_id,
+                request_id=request_id,
+                actor_id=actor_id,
+                mode=mode,
+                classification=classification,
+            ),
+        )
+        return response.status_code, response.json()
+
     async def chat_completion(
         self,
         payload: dict[str, Any],

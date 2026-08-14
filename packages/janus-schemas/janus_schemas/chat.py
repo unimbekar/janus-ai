@@ -45,6 +45,9 @@ class RoutingConstraints(BaseModel):
 class RoutingOptions(BaseModel):
     explain: bool = False
     allow_fallback: bool = True
+    #: One of the Phase 3 weight profiles: balanced, quality_first, speed_first,
+    #: cost_optimized, privacy_first. Unknown values are ignored by the router.
+    profile: str = "balanced"
 
 
 class JanusRequestOptions(BaseModel):

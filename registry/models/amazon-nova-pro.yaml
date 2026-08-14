@@ -1,0 +1,46 @@
+# Amazon Bedrock Converse API. Disabled in local/test. Uses IAM via the
+# runtime, not an API key in the registry.
+slug: amazon/nova-pro
+display_name: Amazon Nova Pro
+provider: amazon
+family: nova
+type: chat
+tier: frontier
+context_window: 300000
+max_output_tokens: 8192
+languages: [en, es, fr, de, pt, ja, zh]
+input_modalities: [text, image]
+output_modalities: [text]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - structured_output
+  - long_context
+  - multilingual
+  - vision
+  - documents
+cost_class: medium
+latency_class: medium
+status: active
+metadata_verified: false
+notes: >-
+  Placeholder registry entry for the Bedrock adapter. Enable nova-pro-us-east-1
+  only in an environment that has AWS credentials and a Bedrock endpoint.
+  Figures are published, not Janus-verified.
+license:
+  name: AWS Service Terms
+  commercial_use: true
+deployments:
+  - key: nova-pro-us-east-1
+    backend: bedrock
+    protocol: native
+    protocol: native
+    deployment_type: provider_cloud
+    privacy_level: provider
+    provider_model_id: amazon.nova-pro-v1:0
+    region: us-east-1
+    data_residency: [US]
+    max_context: 300000
+    priority: 85

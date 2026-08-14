@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type JanusError,
+  type MessageIds,
   type RoutingInfo,
   configureApi,
   streamChat,
+  streamConversationMessage,
 } from "@/lib/api";
 
 /** A fetch that replays the given SSE text, split at arbitrary byte boundaries. */
@@ -29,13 +31,16 @@ function handlers() {
   const routing: RoutingInfo[] = [];
   const deltas: string[] = [];
   const errors: JanusError[] = [];
+  const ids: MessageIds[] = [];
   return {
     routing,
     deltas,
     errors,
+    ids,
     onRouting: (info: RoutingInfo) => routing.push(info),
     onDelta: (text: string) => deltas.push(text),
     onError: (error: JanusError) => errors.push(error),
+    onMessageIds: (value: MessageIds) => ids.push(value),
   };
 }
 
@@ -173,5 +178,30 @@ describe("streamChat", () => {
     } finally {
       configureApi("/api");
     }
+  });
+});
+
+const MESSAGE_EVENT =
+  'event: janus.message\ndata: {"conversation_id":"cnv_1","user_message_id":"msg_u",' +
+  '"assistant_message_id":"msg_a"}\n\n';
+
+describe("streamConversationMessage", () => {
+  it("posts to the conversation and reports ids before routing", async () => {
+    const h = handlers();
+    const fetchMock = respondWith(
+      MESSAGE_EVENT + ROUTING_EVENT + chunk("saved") + "data: [DONE]\n\n",
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamConversationMessage("cnv_1", { content: "hello", model: "auto" }, h);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/conversations/cnv_1/messages");
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      content: "hello",
+      model: "auto",
+    });
+    expect(h.ids[0]?.conversation_id).toBe("cnv_1");
+    expect(h.routing[0]?.model).toBe("janus/mock-small");
+    expect(h.deltas.join("")).toBe("saved");
   });
 });

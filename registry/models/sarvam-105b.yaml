@@ -1,0 +1,49 @@
+# Sarvam AI — Indic-language coverage for the multilingual tier.
+# Disabled in local/test until credentials exist. Language list and size are
+# published figures pending verification against provider documentation.
+slug: sarvam/sarvam-105b
+display_name: Sarvam 105B
+provider: sarvam
+family: sarvam
+version: "1.0"
+parameters: 105B
+type: chat
+tier: recommended
+context_window: 128000
+max_output_tokens: 8192
+languages: [en, hi, te, ta, kn, ml, mr, bn, gu, pa, or]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - structured_output
+  - long_context
+  - multilingual
+  - indic
+cost_class: medium
+latency_class: medium
+status: active
+metadata_verified: false
+notes: >-
+  Placeholder registry entry for the Sarvam adapter. Enable sarvam-105b-in
+  only after SARVAM_API_KEY is set. Parameter count, context window, and
+  language list must be verified against provider documentation.
+aliases:
+  - janus/indic
+license:
+  name: Sarvam API Terms
+  commercial_use: true
+deployments:
+  - key: sarvam-105b-in
+    backend: sarvam
+    protocol: openai_compatible
+    deployment_type: provider_cloud
+    privacy_level: provider
+    endpoint: https://api.sarvam.ai/v1
+    credentials_ref: env://SARVAM_API_KEY
+    provider_model_id: sarvam-105b
+    region: in
+    data_residency: [IN]
+    max_context: 128000
+    priority: 60

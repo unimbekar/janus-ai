@@ -1,0 +1,52 @@
+# Frontier cloud chat model. Not enabled in local/test — credentials and a
+# reviewed environment overlay are required before this deployment exists.
+#
+# Context window, pricing class, and capability flags are published figures,
+# not Janus-measured. metadata_verified stays false until the evaluation
+# harness confirms them.
+slug: openai/gpt-4o
+display_name: GPT-4o
+provider: openai
+family: gpt-4o
+version: "2024-08"
+type: chat
+tier: frontier
+context_window: 128000
+max_output_tokens: 16384
+languages: [en, es, fr, de, pt, ja, zh, ko, it]
+input_modalities: [text, image]
+output_modalities: [text]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - structured_output
+  - long_context
+  - multilingual
+  - vision
+  - documents
+cost_class: high
+latency_class: medium
+status: active
+metadata_verified: false
+notes: >-
+  Placeholder registry entry for the OpenAI adapter. Enable the
+  openai-gpt4o-us deployment in an environment overlay only after an API key
+  is configured via env://OPENAI_API_KEY.
+license:
+  name: OpenAI Terms of Use
+  commercial_use: true
+deployments:
+  - key: openai-gpt4o-us
+    backend: openai
+    protocol: openai_compatible
+    deployment_type: provider_cloud
+    privacy_level: provider
+    endpoint: https://api.openai.com/v1
+    credentials_ref: env://OPENAI_API_KEY
+    provider_model_id: gpt-4o
+    region: us
+    data_residency: [US]
+    max_context: 128000
+    priority: 80

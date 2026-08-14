@@ -21,6 +21,7 @@ status: active
 metadata_verified: true
 aliases:
   - janus/fast
+  - janus/coding
 license:
   name: Janus Internal
   commercial_use: true

@@ -114,6 +114,29 @@ def test_chat_passthrough_forwards_policy_context(client, registered_user, gatew
     assert call["payload"]["model"] == "auto"
 
 
+def test_chat_completions_alias_is_the_openai_surface(
+    client, registered_user, gateway_stub
+) -> None:
+    response = client.post(
+        "/v1/chat/completions",
+        json={"model": "auto", "messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert response.status_code == 200
+    assert gateway_stub.calls[-1]["operation"] == "chat_completion"
+
+
+def test_embeddings_and_providers_are_proxied(client, registered_user, gateway_stub) -> None:
+    assert client.get("/v1/providers").status_code == 200
+    assert gateway_stub.calls[-1]["operation"] == "list_providers"
+    assert client.get("/v1/models/janus/mock-small").status_code == 200
+    assert gateway_stub.calls[-1]["operation"] == "get_model"
+    assert (
+        client.post("/v1/embeddings", json={"model": "auto", "input": "hello"}).status_code == 200
+    )
+    assert gateway_stub.calls[-1]["operation"] == "embeddings"
+
+
 def test_api_key_mode_ceiling_narrows_but_never_widens(
     client, registered_user, gateway_stub
 ) -> None:

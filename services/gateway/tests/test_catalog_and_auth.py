@@ -129,3 +129,44 @@ def test_deployment_health_view_hides_infrastructure(client) -> None:
     keys = {item["key"] for item in body["deployments"]}
     assert keys == {"mock-small-local", "mock-reasoning-private"}
     assert "endpoint" not in client.get("/internal/deployments").text
+
+
+def test_an_organization_api_key_reaches_the_public_surface(anonymous_client) -> None:
+    """An OpenAI SDK pointing at the gateway authenticates with a jsk_ key."""
+    from gateway_app.auth import ApiKeyIdentity
+
+    class _Auth:
+        async def authenticate(self, key: str) -> ApiKeyIdentity:
+            assert key.startswith("jsk_")
+            return ApiKeyIdentity(
+                id="key_test",
+                organization_id="org_test",
+                scopes=("inference",),
+                mode_ceiling=None,
+            )
+
+    anonymous_client.app.state.api_key_auth = _Auth()
+    response = anonymous_client.get(
+        "/v1/models", headers={"Authorization": "Bearer jsk_live_example"}
+    )
+
+    assert response.status_code == 200
+    assert {item["id"] for item in response.json()["data"]} >= {"janus/mock-small"}
+
+
+def test_chat_completions_are_openai_shaped(client) -> None:
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "auto",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "janus": {"routing": {"explain": True}},
+        },
+    )
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["object"] == "chat.completion"
+    assert body["choices"][0]["message"]["role"] == "assistant"
+    assert body["janus"]["routing_reason"] == "auto"
+    assert body["janus"]["routing_explanation"]

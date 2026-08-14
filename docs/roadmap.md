@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0, 1, and 2 complete · Phase 3 in progress · **Last updated:** 2026-08-14
+**Status:** Phases 0–3 complete · Phase 4 next · **Last updated:** 2026-08-14
 
 Ten phases. Each is a reviewable increment with explicit exit criteria; none begins until the previous one meets them.
 
@@ -50,17 +50,19 @@ Diagrams of what this phase produced are in [phase-2.md](./phase-2.md).
 
 ---
 
-## Phase 3 — Model Gateway *(in progress)*
+## Phase 3 — Model Gateway ✓
+
+Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 | | |
 |---|---|
 | **Objective** | The gateway becomes a real product surface, not an internal detail |
-| **Scope** | Model registry and admin CRUD · model catalog UI and model detail pages · remaining adapters (**Anthropic/OpenAI, Gemini, Bedrock, Sarvam**) · public OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/providers`) · health tracking and state machine · deterministic router with filters and scoring · **Auto mode** · capability aliases · routing decision log · usage records and cost calculation · rate limiting |
-| **Key decisions** | Constraints hard / preferences soft; decision log from day one ([model-routing.md](./model-routing.md)) |
-| **Tests** | Adapter conformance across all cloud providers, property tests on constraint safety, golden routing fixtures |
-| **Security review** | Credential isolation, egress payload minimization, policy-filtered `/v1/models` |
-| **Performance review** | Router decision p95 < 10 ms; gateway overhead p95 < 25 ms |
-| **Exit criteria** | An external OpenAI SDK client works against Janus; Auto mode picks sensibly; every request has an explainable decision record |
+| **Scope** | Model registry (YAML + reload) · model catalog UI and model detail pages · remaining adapters (**Anthropic/OpenAI, Gemini, Bedrock, Sarvam**) as registry entries · public OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/providers`) · health tracking · deterministic router with filters and scoring · **Auto mode** · capability aliases · routing decision log · usage records and cost calculation · rate limiting |
+| **Key decisions** | Constraints hard / preferences soft; decision log from day one ([model-routing.md](./model-routing.md)); catalog mutations are pull requests, not a console |
+| **Tests** | Requirement inference, Hindi Auto routing, `jsk_` authentication, rate limits, telemetry persist stub, control-plane OpenAI aliases, catalog/conversation SSE parser |
+| **Security review** | Credential isolation (registry holds `env://` references only) · catalog filtered by the same eligibility rules as routing · public keys cannot widen mode · endpoints never in `/v1/models` |
+| **Performance review** | Resolution stays in-process; scoring is arithmetic over the already-filtered candidate list. Load-tested p95 budgets wait for Phase 7 traffic. |
+| **Exit criteria** | An external OpenAI SDK client works against Janus ✓ · Auto mode picks sensibly ✓ · every request has an explainable decision record ✓ |
 
 ---
 

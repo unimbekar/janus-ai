@@ -162,6 +162,18 @@ def gateway_stub():
             self.calls.append({"operation": "list_models", **kwargs})
             return self.models_response
 
+        async def get_model(self, model_id: str, **kwargs) -> dict:
+            self.calls.append({"operation": "get_model", "model_id": model_id, **kwargs})
+            return {"id": model_id, "object": "model", "owned_by": "janus", "janus": {}}
+
+        async def list_providers(self, **kwargs) -> dict:
+            self.calls.append({"operation": "list_providers", **kwargs})
+            return {"object": "list", "data": []}
+
+        async def embeddings(self, payload, **kwargs) -> tuple[int, dict]:
+            self.calls.append({"operation": "embeddings", "payload": payload, **kwargs})
+            return 200, {"object": "list", "data": [], "model": payload.get("model", "auto")}
+
         async def chat_completion(self, payload, **kwargs) -> tuple[int, dict]:
             self.calls.append({"operation": "chat_completion", "payload": payload, **kwargs})
             return 200, self.completion_response

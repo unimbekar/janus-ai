@@ -41,6 +41,17 @@ async def readiness(response: Response, registry: RegistryDep, health: HealthDep
     }
 
 
+@router.post("/internal/registry/reload")
+async def reload_registry(caller: CallerDep, registry: RegistryDep) -> dict[str, Any]:
+    """Re-read YAML. Catalog mutations are pull requests; this applies them."""
+    snapshot = registry.reload()
+    return {
+        "environment": snapshot.environment,
+        "model_count": len(snapshot.models),
+        "deployment_count": len(snapshot.deployments_by_key),
+    }
+
+
 @router.get("/internal/deployments")
 async def deployment_health(
     caller: CallerDep,

@@ -18,7 +18,7 @@ def request_for(**overrides) -> ResolutionRequest:
     return ResolutionRequest(**{**defaults, **overrides})
 
 
-def test_auto_returns_candidates_ordered_by_priority(registry, resolver) -> None:
+def test_auto_returns_candidates_ordered_by_score(registry, resolver) -> None:
     result = resolver.resolve(registry, request_for())
 
     assert result.routing_reason == "auto"
@@ -26,6 +26,15 @@ def test_auto_returns_candidates_ordered_by_priority(registry, resolver) -> None
         "mock-small-local",
         "mock-reasoning-private",
     ]
+
+
+def test_hindi_auto_prefers_the_indic_model(registry, resolver) -> None:
+    result = resolver.resolve(
+        registry,
+        request_for(requirements=RoutingRequirements(languages=["hi"], capabilities=["indic"])),
+    )
+    assert result.primary.model.slug == "janus/mock-reasoning"
+    assert result.scores[0][1].components["language"] == 1.0
 
 
 def test_explicit_model_selects_its_deployments(registry, resolver) -> None:

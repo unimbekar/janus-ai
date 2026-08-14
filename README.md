@@ -8,8 +8,8 @@ Multilingual capability — including strong Indic-language support through Sarv
 
 Website: <https://www.janus-intelligence.ai>
 
-> **Status: Phase 2 — Chat, complete. Phase 3 — Model Gateway, in progress.**
-> The design set in [`docs/`](docs/) is the specification. Phase 2 added persisted conversations; Phase 3 makes the gateway a public product surface. See [phase-2.md](docs/phase-2.md) and [roadmap.md](docs/roadmap.md#phase-3--model-gateway).
+> **Status: Phase 3 — Model Gateway, complete.**
+> The design set in [`docs/`](docs/) is the specification. Phase 3 makes the gateway a public product surface: OpenAI-compatible clients, Auto routing with a stored decision, and a catalog UI. See [phase-3.md](docs/phase-3.md) and [roadmap.md](docs/roadmap.md#phase-3--model-gateway).
 
 ---
 
@@ -68,18 +68,18 @@ make run-web       # :3000
 
 ---
 
-## What Phase 1 delivers
+## What Phase 3 delivers
 
 | Area | State |
 |------|-------|
-| Model Gateway | OpenAI-compatible `/v1/chat/completions`, `/v1/models`, `/v1/providers`; registry-as-code; capability-and-policy routing with fallback; per-deployment health tracking |
-| Backends | `ModelBackend` interface with mock, generic OpenAI-compatible, and Ollama adapters |
-| Control plane | Email/password auth, sessions, API keys, organizations and membership, audit events, gateway proxying |
-| Tenancy | Enforced by PostgreSQL row-level security, not application code ([ADR 0005](docs/adr/0005-multi-tenancy-rls.md)) |
-| Web | Streaming chat that shows which model answered, why, and whether inference stayed private |
-| Checks | Ruff, mypy, import-linter boundary contracts, 132 tests, GitHub Actions CI |
+| Model Gateway | OpenAI-compatible `/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/providers`; `jsk_` keys; per-org rate limits |
+| Routing | Deterministic requirement inference, weighted scoring, Auto, capability aliases (`janus/fast`, `janus/reasoning`, …) |
+| Telemetry | `telemetry.routing_decisions` and `telemetry.usage_records` on every completion when the gateway has a database |
+| Backends | mock, Ollama, generic OpenAI-compatible, plus OpenAI, Anthropic, Gemini, Sarvam, Bedrock adapters (cloud deployments off in local/test) |
+| Web | Persisted conversations with a sidebar, model catalog and detail pages |
+| Checks | Ruff, mypy, import-linter, web tests, API + gateway tests |
 
-Deferred deliberately: Redis (nothing caches or rate-limits until Phase 3) and persisted conversations (Phase 2). Requests are not stored — the inference route is a passthrough by design.
+Deferred deliberately: Janus-hosted GPU serving (Phase 4), agents (Phase 5), RAG (Phase 6). Cloud provider deployments stay out of the local overlay until credentials are reviewed in.
 
 ---
 
@@ -103,7 +103,7 @@ Two principles drive every decision in these documents:
 
 ## Design documents
 
-Start with [phase-1.md](docs/phase-1.md) if you want to see what actually runs today
+Start with [phase-3.md](docs/phase-3.md) if you want to see what actually runs today.
 — five diagrams covering the containers, a streaming request end to end, how a model
 is chosen, where tenancy is enforced, and what is deliberately not built yet.
 
@@ -125,6 +125,7 @@ The rest is the specification, read in this order.
 | — | [repository-structure.md](docs/repository-structure.md) | Proposed monorepo layout and ownership |
 | — | [phase-1.md](docs/phase-1.md) | What Phase 1 actually built, in diagrams |
 | — | [phase-2.md](docs/phase-2.md) | What Phase 2 actually built, in diagrams |
+| — | [phase-3.md](docs/phase-3.md) | What Phase 3 actually built, in diagrams |
 | — | [adr/](docs/adr/) | Architecture decision records |
 
 ---
@@ -159,7 +160,7 @@ No benchmark numbers appear in these documents. Janus publishes **only** figures
 Delivery is phase-gated:
 
 ```text
-Phase 0  Design  ✓  →  Phase 1  Foundation  ✓  →  Phase 2  Chat  →  …
+Phase 0  Design  ✓  →  Phase 1  Foundation  ✓  →  Phase 2  Chat  ✓  →  Phase 3  Gateway  ✓  →  …
 ```
 
 Each implementation phase must ship: objective, architectural decisions, files created/modified, implementation, tests, security review, performance review, documentation.

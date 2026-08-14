@@ -379,10 +379,10 @@ class Executor:
             organization_id=ctx.organization_id,
             resolution=resolution,
             selected=candidate,
-            requested_model=resolution.routing_reason,
+            requested_model=resolution.requested_model,
             mode=ctx.mode.value,
             classification=ctx.classification.value,
-            requirements={},
+            requirements=resolution.requirements,
             decision_ms=ctx.elapsed_ms,
             fallback_used=fallback_used,
         )

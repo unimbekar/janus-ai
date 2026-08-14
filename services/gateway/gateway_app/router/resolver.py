@@ -83,7 +83,11 @@ class ResolutionRequest:
     mode: ExecutionMode = ExecutionMode.AUTO
     classification: Classification = Classification.INTERNAL
     requirements: RoutingRequirements = field(default_factory=RoutingRequirements)
+    #: Used for ranking only. Inferred signals live here so a guessed language
+    #: cannot make an explicit model ineligible.
+    preferences: RoutingRequirements | None = None
     constraints: RoutingConstraints = field(default_factory=RoutingConstraints)
+    profile: WeightProfile = WeightProfile.BALANCED
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +99,8 @@ class ResolutionResult:
     excluded: tuple[tuple[str, ExclusionReason], ...] = ()
     weight_profile: str = WeightProfile.BALANCED.value
     scores: tuple[tuple[str, ScoreBreakdown], ...] = ()
+    requested_model: str = "auto"
+    requirements: dict[str, object] = field(default_factory=dict)
 
     @property
     def primary(self) -> Candidate:
@@ -122,16 +128,16 @@ class ModelResolver:
         if not eligible:
             raise self._no_eligible_model(request, excluded, pinned)
 
-        profile = WeightProfile.BALANCED
+        ranking = request.preferences or request.requirements
         scored = [
             (
                 candidate,
                 score_candidate(
                     candidate.model,
                     candidate.deployment,
-                    request.requirements,
+                    ranking,
                     self._health,
-                    profile=profile,
+                    profile=request.profile,
                 ),
             )
             for candidate in eligible
@@ -151,8 +157,10 @@ class ModelResolver:
             explanation=self._explain(ordered[0], request, routing_reason),
             pinned=pinned,
             excluded=tuple(excluded),
-            weight_profile=profile.value,
+            weight_profile=request.profile.value,
             scores=score_rows,
+            requested_model=request.model,
+            requirements=(request.preferences or request.requirements).model_dump(),
         )
 
     def eligible_candidates(
@@ -324,8 +332,11 @@ class ModelResolver:
         else:
             clauses.append("it is the best available match for this request")
 
-        if request.requirements.capabilities:
-            clauses.append("it provides " + ", ".join(request.requirements.capabilities))
+        if (request.preferences or request.requirements).capabilities:
+            clauses.append(
+                "it provides "
+                + ", ".join((request.preferences or request.requirements).capabilities)
+            )
         if request.mode is not ExecutionMode.AUTO:
             clauses.append(f"your {request.mode.value} policy applies")
         if privacy is not PrivacyLevel.PROVIDER:

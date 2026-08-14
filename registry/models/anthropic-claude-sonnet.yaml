@@ -1,0 +1,48 @@
+# Anthropic Messages API. Disabled in local/test until credentials exist.
+slug: anthropic/claude-sonnet-4
+display_name: Claude Sonnet 4
+provider: anthropic
+family: claude
+version: "4"
+type: chat
+tier: frontier
+context_window: 200000
+max_output_tokens: 16384
+languages: [en, es, fr, de, pt, ja, zh]
+input_modalities: [text, image]
+output_modalities: [text]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - structured_output
+  - long_context
+  - multilingual
+  - vision
+  - documents
+  - agentic
+cost_class: high
+latency_class: medium
+status: active
+metadata_verified: false
+notes: >-
+  Placeholder registry entry for the Anthropic adapter. Enable
+  anthropic-sonnet-us only after ANTHROPIC_API_KEY is set. Figures are
+  published, not Janus-verified.
+license:
+  name: Anthropic Commercial Terms
+  commercial_use: true
+deployments:
+  - key: anthropic-sonnet-us
+    backend: anthropic
+    protocol: native
+    deployment_type: provider_cloud
+    privacy_level: provider
+    endpoint: https://api.anthropic.com
+    credentials_ref: env://ANTHROPIC_API_KEY
+    provider_model_id: claude-sonnet-4-0
+    region: us
+    data_residency: [US]
+    max_context: 200000
+    priority: 75

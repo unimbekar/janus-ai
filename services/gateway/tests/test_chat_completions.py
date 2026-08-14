@@ -231,6 +231,29 @@ def test_multilingual_round_trip(client) -> None:
     assert text.splitlines()[-1][:40] in response.json()["choices"][0]["message"]["content"]
 
 
+def test_auto_routes_hindi_to_the_indic_model(client) -> None:
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "auto",
+            "messages": [{"role": "user", "content": "इस अनुबंध का सारांश दें।"}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["janus"]["model"] == "janus/mock-reasoning"
+
+
+def test_capability_alias_is_accepted_on_the_public_surface(client) -> None:
+    response = client.post(
+        "/v1/chat/completions",
+        json=_body(model="janus/fast"),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["janus"]["model"] == "janus/mock-small"
+
+
 def test_validation_errors_use_the_janus_envelope(client) -> None:
     response = client.post("/v1/chat/completions", json={"model": "auto", "messages": []})
 

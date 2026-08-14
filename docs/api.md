@@ -381,14 +381,14 @@ Redis-backed sliding windows. Cost quotas (`max_cost_usd` per period) are checke
 
 **Never:** breaking a documented field's meaning without a new major version. `janus.*` fields are additive and safe for OpenAI-compatible clients to ignore.
 
-An OpenAPI 3.1 document is generated from Pydantic models and published as the machine-readable contract in Phase 3; the SDKs are generated from it.
+An OpenAPI 3.1 document is generated from Pydantic models; SDKs can be generated from it later. Phase 3 publishes the live FastAPI `/docs` on non-production gateway and API processes.
 
 ---
 
 ## 10. Open questions
 
-1. Should the web app use `/v1/conversations/{id}/messages` exclusively (recommended), or also call `/v1/chat/completions` directly for stateless flows?
-2. Do we return `janus.routing_explanation` by default, or only when `routing.explain` is true? (Recommendation: a short form always, detail on request.)
+1. ~~Should the web app use `/v1/conversations/{id}/messages` exclusively?~~ **Phase 3:** the product UI uses conversations; `/v1/chat` and `/v1/chat/completions` remain for programmatic callers.
+2. ~~Do we return `janus.routing_explanation` by default?~~ **Phase 3:** omitted unless `janus.routing.explain` is true (conversation streams always request it).
 3. Are webhooks needed in Phase 5 for long-running agent runs, or is polling plus SSE sufficient?
 4. Should organization admins see per-user usage by default, or is that a privacy setting?
 5. Do we support OpenAI's `/v1/completions` legacy endpoint for compatibility, or chat-only?

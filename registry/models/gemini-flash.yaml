@@ -1,0 +1,45 @@
+# Google Gemini via the OpenAI-compatible surface. Disabled in local/test.
+slug: google/gemini-2.5-flash
+display_name: Gemini 2.5 Flash
+provider: google
+family: gemini
+version: "2.5"
+type: chat
+tier: frontier
+context_window: 1000000
+max_output_tokens: 8192
+languages: [en, es, fr, de, pt, ja, zh, hi]
+input_modalities: [text, image]
+output_modalities: [text]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - structured_output
+  - long_context
+  - multilingual
+  - vision
+cost_class: medium
+latency_class: low
+status: active
+metadata_verified: false
+notes: >-
+  Placeholder registry entry for the Gemini adapter. Enable gemini-flash-us
+  only after GEMINI_API_KEY is set. Context window is the published figure.
+license:
+  name: Google APIs Terms of Service
+  commercial_use: true
+deployments:
+  - key: gemini-flash-us
+    backend: gemini
+    protocol: openai_compatible
+    deployment_type: provider_cloud
+    privacy_level: provider
+    endpoint: https://generativelanguage.googleapis.com/v1beta/openai
+    credentials_ref: env://GEMINI_API_KEY
+    provider_model_id: gemini-2.5-flash
+    region: us
+    data_residency: [US]
+    max_context: 1000000
+    priority: 70

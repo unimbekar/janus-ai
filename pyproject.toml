@@ -1,7 +1,7 @@
 [project]
 name = "janus-workspace"
 version = "0.1.0"
-description = "Janus Intelligence monorepo (Phase 1 — Foundation)"
+description = "Janus Intelligence monorepo"
 requires-python = ">=3.12"
 dependencies = [
     "janus-core",

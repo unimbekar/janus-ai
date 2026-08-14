@@ -15,7 +15,9 @@ from janus_schemas.common import Classification, ExecutionMode
 from gateway_app.backends import CallContext
 from gateway_app.deps import CallerDep, ExecutorDep, RegistryDep, ResolverDep, SettingsDep
 from gateway_app.execution import StreamEvent
+from gateway_app.router.infer import infer_requirements, merge_requirements
 from gateway_app.router.resolver import ResolutionRequest
+from gateway_app.router.scoring import WeightProfile
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/v1", tags=["inference"])
@@ -69,6 +71,13 @@ async def chat_completions(
 ) -> Response:
     mode = _effective_mode(request, caller.mode)
     classification = _effective_classification(request, caller.classification)
+    explicit = request.janus.requirements
+    inferred = infer_requirements(request.messages)
+    preferences = merge_requirements(explicit, inferred)
+    try:
+        profile = WeightProfile(request.janus.routing.profile)
+    except ValueError:
+        profile = WeightProfile.BALANCED
 
     ctx = CallContext(
         request_id=caller.request_id,
@@ -85,8 +94,10 @@ async def chat_completions(
             model=request.model,
             mode=mode,
             classification=classification,
-            requirements=request.janus.requirements,
+            requirements=explicit,
+            preferences=preferences,
             constraints=request.janus.constraints,
+            profile=profile,
         ),
     )
 

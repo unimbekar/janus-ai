@@ -17,6 +17,10 @@ def test_loads_test_environment(settings) -> None:
 
     slugs = {model.slug for model in registry.models}
     assert {"janus/mock-small", "janus/mock-reasoning"} <= slugs
+    # Cloud adapters are catalogued as YAML, but their deployments are absent
+    # from the test overlay so no test can reach a provider.
+    assert "openai/gpt-4o" in slugs
+    assert not registry.deployments_by_key.get("openai-gpt4o-us")
 
     # The Ollama deployment is absent from the test overlay, so it does not
     # exist here even though the model file declares it.
