@@ -81,6 +81,24 @@ make run-web       # :3000
 
 ---
 
+## Local vs AWS (where containers run)
+
+| | **Local (now)** | **AWS (after deploy)** |
+|--|-----------------|-------------------------|
+| **Host** | This machine (e.g. DGX Spark) via Docker Compose | Your AWS account |
+| **web / api / gateway** | Compose containers on the host | **ECS Fargate** tasks (serverless containers) |
+| **Postgres / Redis** | Compose services on the host | Aurora PostgreSQL + ElastiCache |
+| **How you start it** | `make stack-up` | `terraform apply` in [`infra/aws`](infra/aws), then push images ([aws-deploy.md](docs/aws-deploy.md)) |
+| **How you reach it** | e.g. `http://localhost:3010` (ports from `.env`) | ALB DNS (CloudWatch logs under `/ecs/janus-<env>/…`) |
+
+**Today the stack is not on Fargate.** `api`, `gateway`, and `web` are ordinary Docker containers on the local host. Fargate is the production/staging runtime defined in Terraform; it exists only after you apply that stack and deploy images to ECR.
+
+Same application code and images in both places — only the orchestrator changes (Compose vs ECS).
+
+Troubleshooting: [docs/runbooks/troubleshooting.md](docs/runbooks/troubleshooting.md). Architecture / scaling: [docs/architecture.md](docs/architecture.md#23-serverless-compute--and-how-it-scales-under-load).
+
+---
+
 ## What this build delivers
 
 | Area | State |
