@@ -286,20 +286,29 @@ flowchart TB
 
 ## 7. Verifying it yourself
 
+On this machine ports 3000/8080 are taken, so the stack publishes API **8090** and
+web **3010** (see `.env`). The default in the examples is 8080.
+
 ```bash
 make stack-up
-make test-api          # needs Postgres — 103 tests
-make test-gateway      # 82 tests
+make test-api          # needs Postgres
+make test-gateway
 
-# Create a conversation and send a message (session cookie from browser sign-in):
-curl -s -b cookies.txt -X POST localhost:8080/v1/conversations \
+API="localhost:${JANUS_API_PORT:-8080}"
+
+# Sign in (or register) so curl has a session cookie:
+curl -s -c cookies.txt -X POST "$API/v1/auth/register" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"correct-horse-battery","name":"You","organization_name":"Acme"}'
+
+curl -s -b cookies.txt -X POST "$API/v1/conversations" \
   -H 'Content-Type: application/json' -d '{}'
-curl -s -N -b cookies.txt -X POST localhost:8080/v1/conversations/cnv_…/messages \
+curl -s -N -b cookies.txt -X POST "$API/v1/conversations/cnv_…/messages" \
   -H 'Content-Type: application/json' -d '{"content":"Hello"}'
 ```
 
 Reload the conversation — history and model attribution survive:
 
 ```bash
-curl -s -b cookies.txt localhost:8080/v1/conversations/cnv_…
+curl -s -b cookies.txt "$API/v1/conversations/cnv_…"
 ```

@@ -269,7 +269,7 @@ Deliberately **not** built yet, so nobody goes looking for it:
 
 ```bash
 make stack-up                 # postgres, migrations, gateway, api, web
-curl -s localhost:8080/readyz # {"status":"ready","checks":{...,"schema":"ok",...}}
+curl -s localhost:${JANUS_API_PORT:-8080}/readyz # {"status":"ready","checks":{...,"schema":"ok",...}}
 make check                    # lint, types, boundaries, web checks, tests
 ```
 
