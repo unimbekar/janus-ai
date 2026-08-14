@@ -42,7 +42,7 @@ def owner_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def settings(owner_url):
+def settings(owner_url, tmp_path_factory):
     from api_app.settings import ApiSettings
 
     return ApiSettings(
@@ -58,6 +58,7 @@ def settings(owner_url):
         argon2_time_cost=1,
         argon2_memory_cost_kib=8,
         argon2_parallelism=1,
+        attachment_root=str(tmp_path_factory.mktemp("attachments")),
     )
 
 
@@ -104,7 +105,8 @@ async def clean_tables(settings, migrated_database) -> AsyncIterator[None]:
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE core.audit_events, core.api_keys, core.sessions, "
+                "TRUNCATE chat.attachments, chat.messages, chat.conversations, "
+                "core.audit_events, core.api_keys, core.sessions, "
                 "core.organization_members, core.team_members, core.teams, "
                 "core.policies, core.organizations, core.users CASCADE"
             )
@@ -113,18 +115,37 @@ async def clean_tables(settings, migrated_database) -> AsyncIterator[None]:
     yield
 
 
+DEFAULT_STREAM_FRAMES = [
+    b'event: janus.routing\ndata: {"request_id":"rq_test","model":"janus/mock-small",'
+    b'"deployment":"mock-small-local","provider":"janus","privacy":"local",'
+    b'"fallback_used":false,"routing_explanation":"Chosen for this test."}\n\n',
+    b'data: {"id":"c1","object":"chat.completion.chunk","created":0,'
+    b'"model":"janus/mock-small","choices":[{"index":0,"delta":{"content":"Hello"}}]}\n\n',
+    b'data: {"id":"c1","object":"chat.completion.chunk","created":0,'
+    b'"model":"janus/mock-small","choices":[{"index":0,"delta":{"content":" there"},'
+    b'"finish_reason":"stop"}]}\n\n',
+    b'event: janus.usage\ndata: {"request_id":"rq_test",'
+    b'"usage":{"prompt_tokens":7,"completion_tokens":3,"total_tokens":10},"ttft_ms":4}\n\n',
+    b"data: [DONE]\n\n",
+]
+
+
 @pytest.fixture
 def gateway_stub():
     """A gateway that records calls instead of making them.
 
     The control plane must never reach a provider, so its tests must not reach a
-    gateway either. What matters here is the context it forwards.
+    gateway either. What matters here is the context it forwards, and — for chat —
+    the stream it gets back, which tests can script frame by frame.
     """
 
     class GatewayStub:
         def __init__(self) -> None:
             self.calls: list[dict] = []
             self.models_response: dict = {"object": "list", "data": []}
+            self.stream_frames: list[bytes] = list(DEFAULT_STREAM_FRAMES)
+            #: Raised instead of streaming, to exercise the error path.
+            self.stream_error: Exception | None = None
             self.completion_response: dict = {
                 "id": "chatcmpl_stub",
                 "object": "chat.completion",
@@ -149,13 +170,12 @@ def gateway_stub():
             return 200, self.completion_response
 
         async def stream_chat_completion(self, payload, **kwargs):
+            """An async generator, exactly like the real client."""
             self.calls.append({"operation": "stream", "payload": payload, **kwargs})
-
-            async def generator():
-                yield b'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
-                yield b"data: [DONE]\n\n"
-
-            return generator()
+            if self.stream_error is not None:
+                raise self.stream_error
+            for frame in self.stream_frames:
+                yield frame
 
         async def health(self) -> bool:
             return True
@@ -190,3 +210,31 @@ def registered_user(client) -> dict:
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+@pytest.fixture
+def conversation(client, registered_user) -> dict:
+    response = client.post("/v1/conversations", json={})
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+@pytest.fixture
+def read_sse():
+    """Decode a completed SSE response body into ``(event, data)`` pairs."""
+
+    def parse(response) -> list[tuple[str | None, str]]:
+        events: list[tuple[str | None, str]] = []
+        for block in response.text.split("\n\n"):
+            name: str | None = None
+            data: list[str] = []
+            for line in block.splitlines():
+                if line.startswith("event:"):
+                    name = line[len("event:") :].strip()
+                elif line.startswith("data:"):
+                    data.append(line[len("data:") :].strip())
+            if data:
+                events.append((name, "\n".join(data)))
+        return events
+
+    return parse

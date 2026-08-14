@@ -35,6 +35,12 @@ class ApiSettings(BaseServiceSettings):
 
     cors_allow_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
+    # Attachments. Phase 2 stores bytes on a filesystem; the S3-backed store
+    # arrives with the AWS infrastructure phase, behind the same interface.
+    attachment_root: str = "/var/lib/janus/attachments"
+    attachment_max_bytes: int = 20 * 1024 * 1024
+    attachment_max_per_message: int = 10
+
     @property
     def effective_migration_url(self) -> str:
         return self.migration_database_url or self.database_url

@@ -32,7 +32,7 @@ ACTOR_SETTING = "janus.user_id"
 
 # The schema this build of the service knows how to talk to. Bumped by whichever
 # migration changes a table this code reads or writes.
-EXPECTED_SCHEMA_VERSION = "0001"
+EXPECTED_SCHEMA_VERSION = "0002"
 
 
 class TenantContextError(JanusError):

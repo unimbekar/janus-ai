@@ -106,3 +106,90 @@ class CreatedApiKeyResponse(ApiKeyResponse):
     """The only response that ever contains the key itself."""
 
     key: str = Field(description="Shown once. Janus stores only a hash.")
+
+
+# ------------------------------------------------------------------ chat
+
+
+class CreateConversationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, max_length=200)
+    #: A model slug to use for every turn, or omitted to route per message.
+    pinned_model: str | None = Field(default=None, max_length=200)
+    #: May only narrow the organization default, never widen it.
+    mode: ExecutionMode | None = None
+
+
+class UpdateConversationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, max_length=200)
+    pinned_model: str | None = Field(default=None, max_length=200)
+    #: Explicit, because ``pinned_model: null`` cannot be told apart from an
+    #: absent field once the body is parsed.
+    clear_pinned_model: bool = False
+    mode: ExecutionMode | None = None
+
+
+class AttachmentResponse(BaseModel):
+    id: str
+    filename: str
+    mime_type: str
+    size_bytes: int
+    scan_status: str
+    created_at: datetime
+
+
+class MessageResponse(BaseModel):
+    id: str
+    role: str
+    sequence: int
+    content: str
+    status: str
+    model: str | None = None
+    deployment: str | None = None
+    provider: str | None = None
+    privacy: str | None = None
+    fallback_used: bool = False
+    routing_explanation: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    finish_reason: str | None = None
+    error: dict | None = None
+    parent_message_id: str | None = None
+    attachments: list[AttachmentResponse] = Field(default_factory=list)
+    created_at: datetime
+
+
+class ConversationResponse(BaseModel):
+    id: str
+    title: str | None
+    pinned_model: str | None
+    mode: ExecutionMode | None
+    message_count: int
+    last_message_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConversationDetailResponse(ConversationResponse):
+    messages: list[MessageResponse] = Field(default_factory=list)
+
+
+class ConversationPageResponse(BaseModel):
+    data: list[ConversationResponse]
+    next_cursor: str | None = None
+
+
+class SendMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(min_length=1, max_length=200_000)
+    #: Overrides the conversation's pinned model for this turn only.
+    model: str | None = Field(default=None, max_length=200)
+    attachment_ids: list[str] = Field(default_factory=list, max_length=10)
+
+
+class CancelResponse(BaseModel):
+    cancelled: int = Field(description="How many in-flight generations were signalled.")

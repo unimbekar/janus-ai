@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from api_app.db import EXPECTED_SCHEMA_VERSION
+
 
 def test_current_organization(client, registered_user) -> None:
     body = client.get("/v1/organizations/current").json()
@@ -166,7 +168,7 @@ def test_readiness_fails_on_a_schema_the_service_does_not_know(client) -> None:
     assert response.status_code == 503
     assert body["status"] == "unavailable"
     assert body["checks"]["database"] == "ok"
-    assert "expected 0001" in body["checks"]["schema"]
+    assert f"expected {EXPECTED_SCHEMA_VERSION}" in body["checks"]["schema"]
 
 
 def test_readiness_fails_when_the_schema_is_missing(client) -> None:

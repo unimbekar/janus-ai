@@ -15,12 +15,15 @@ from janus_core.logging import bind_organization_id, bind_request_id, configure_
 from janus_core.telemetry import instrument_app, setup_telemetry
 
 from api_app import __version__
+from api_app.cancellation import CancellationRegistry
+from api_app.conversations import ConversationService
 from api_app.db import Database, create_engine
 from api_app.gateway_client import GatewayClient
 from api_app.identity import IdentityService
-from api_app.routers import auth, inference, meta, organizations
+from api_app.routers import attachments, auth, conversations, inference, meta, organizations
 from api_app.security import PasswordHashing
 from api_app.settings import ApiSettings, get_settings
+from api_app.storage import FilesystemObjectStore
 
 logger = get_logger(__name__)
 
@@ -53,6 +56,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         timeout_seconds=settings.gateway_timeout_seconds,
         service_name=settings.service_name,
     )
+    app.state.conversations = ConversationService()
+    # Per-instance, which is why cancelling from another device is best-effort
+    # until Phase 3 (see api_app/cancellation.py).
+    app.state.cancellations = CancellationRegistry()
+    app.state.object_store = FilesystemObjectStore(settings.attachment_root)
 
     logger.info(
         "api_started",
@@ -142,6 +150,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(inference.router)
+    app.include_router(conversations.router)
+    app.include_router(attachments.router)
 
     instrument_app(app)
     return app

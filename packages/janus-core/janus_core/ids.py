@@ -29,6 +29,7 @@ class IdPrefix(StrEnum):
     SESSION = "ses"
     CONVERSATION = "cnv"
     MESSAGE = "msg"
+    ATTACHMENT = "att"
     AGENT = "agt"
     AGENT_RUN = "run"
     AGENT_STEP = "stp"

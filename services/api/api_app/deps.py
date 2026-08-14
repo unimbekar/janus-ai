@@ -16,11 +16,14 @@ from janus_core.errors import AuthenticationError, AuthorizationError
 from janus_schemas.common import Classification, ExecutionMode
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api_app.cancellation import CancellationRegistry
+from api_app.conversations import ConversationService
 from api_app.db import Database
 from api_app.gateway_client import GatewayClient
 from api_app.identity import IdentityService, role_at_least
 from api_app.models import Organization
 from api_app.settings import ApiSettings
+from api_app.storage import ObjectStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +83,18 @@ def get_identity(request: Request) -> IdentityService:
 
 def get_gateway(request: Request) -> GatewayClient:
     return request.app.state.gateway
+
+
+def get_conversations(request: Request) -> ConversationService:
+    return request.app.state.conversations
+
+
+def get_cancellations(request: Request) -> CancellationRegistry:
+    return request.app.state.cancellations
+
+
+def get_object_store(request: Request) -> ObjectStore:
+    return request.app.state.object_store
 
 
 def get_request_id(request: Request) -> str:
@@ -187,6 +202,9 @@ SessionDep = Annotated[AsyncSession, Depends(tenant_session)]
 DatabaseDep = Annotated[Database, Depends(get_db)]
 IdentityDep = Annotated[IdentityService, Depends(get_identity)]
 GatewayDep = Annotated[GatewayClient, Depends(get_gateway)]
+ConversationsDep = Annotated[ConversationService, Depends(get_conversations)]
+CancellationDep = Annotated[CancellationRegistry, Depends(get_cancellations)]
+ObjectStoreDep = Annotated[ObjectStore, Depends(get_object_store)]
 SettingsDep = Annotated[ApiSettings, Depends(get_settings_for_app)]
 RequestIdDep = Annotated[str, Depends(get_request_id)]
 ModeDep = Annotated[ExecutionMode, Depends(effective_mode)]
