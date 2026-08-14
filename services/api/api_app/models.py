@@ -367,3 +367,253 @@ class Attachment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+AGENT_SCHEMA = "agent"
+KNOWLEDGE_SCHEMA = "knowledge"
+
+agent_status_enum = Enum(
+    "draft",
+    "published",
+    "archived",
+    name="agent_status",
+    create_type=False,
+)
+run_status_enum = Enum(
+    "queued",
+    "running",
+    "awaiting_input",
+    "awaiting_approval",
+    "completed",
+    "failed",
+    "cancelled",
+    "halted",
+    name="run_status",
+    create_type=False,
+)
+policy_scope_enum = Enum(
+    "platform",
+    "organization",
+    "team",
+    "agent",
+    name="policy_scope",
+    create_type=False,
+)
+
+
+class Agent(Base):
+    __tablename__ = "agents"
+    __table_args__ = ({"schema": AGENT_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    slug: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(agent_status_enum, nullable=False, default="draft")
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    visibility: Mapped[str] = mapped_column(Text, nullable=False, default="organization")
+    created_by: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AgentVersion(Base):
+    __tablename__ = "agent_versions"
+    __table_args__ = ({"schema": AGENT_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    agent_id: Mapped[str] = mapped_column(Text, nullable=False)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    instructions: Mapped[str] = mapped_column(Text, nullable=False)
+    capabilities: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    model_policy: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    memory_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    knowledge_base_ids: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    tools: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_by: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+    __table_args__ = ({"schema": AGENT_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_id: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_version_id: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_id: Mapped[str | None] = mapped_column(Text)
+    triggered_by: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(run_status_enum, nullable=False, default="queued")
+    mode: Mapped[ExecutionMode] = mapped_column(execution_mode_enum, nullable=False)
+    input: Mapped[str] = mapped_column(Text, nullable=False)
+    output: Mapped[str | None] = mapped_column(Text)
+    step_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False, default=0)
+    halt_reason: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[dict | None] = mapped_column(JSONB)
+    citations: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AgentStep(Base):
+    __tablename__ = "agent_steps"
+    __table_args__ = ({"schema": AGENT_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    run_id: Mapped[str] = mapped_column(Text, nullable=False)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    node: Mapped[str] = mapped_column(Text, nullable=False)
+    model_slug: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = mapped_column(Text)
+    tool_name: Mapped[str | None] = mapped_column(Text)
+    tool_input: Mapped[dict | None] = mapped_column(JSONB)
+    tool_output: Mapped[dict | None] = mapped_column(JSONB)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    error: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Checkpoint(Base):
+    __tablename__ = "checkpoints"
+    __table_args__ = ({"schema": AGENT_SCHEMA},)
+
+    run_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    step: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class KnowledgeBase(Base):
+    __tablename__ = "knowledge_bases"
+    __table_args__ = ({"schema": KNOWLEDGE_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    classification: Mapped[Classification] = mapped_column(
+        classification_enum, nullable=False, default=Classification.INTERNAL
+    )
+    embedding_model: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding_dimensions: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    chunk_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    document_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_by: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class KnowledgeDocument(Base):
+    __tablename__ = "documents"
+    __table_args__ = ({"schema": KNOWLEDGE_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    knowledge_base_id: Mapped[str] = mapped_column(Text, nullable=False)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str | None] = mapped_column(Text)
+    source_type: Mapped[str] = mapped_column(Text, nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(Text)
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
+    content_sha256: Mapped[str | None] = mapped_column(Text)
+    language: Mapped[str | None] = mapped_column(Text)
+    classification: Mapped[Classification] = mapped_column(
+        classification_enum, nullable=False, default=Classification.INTERNAL
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
+    error: Mapped[dict | None] = mapped_column(JSONB)
+    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_by: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Chunk(Base):
+    __tablename__ = "chunks"
+    __table_args__ = ({"schema": KNOWLEDGE_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    document_id: Mapped[str] = mapped_column(Text, nullable=False)
+    knowledge_base_id: Mapped[str] = mapped_column(Text, nullable=False)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    token_count: Mapped[int | None] = mapped_column(Integer)
+    embedding_model: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding_version: Mapped[str] = mapped_column(Text, nullable=False, default="1")
+    chunk_metadata: Mapped[dict] = mapped_column(
+        "metadata", JSONB, nullable=False, default=dict, server_default="{}"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Citation(Base):
+    __tablename__ = "citations"
+    __table_args__ = ({"schema": CHAT_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    message_id: Mapped[str | None] = mapped_column(Text)
+    run_id: Mapped[str | None] = mapped_column(Text)
+    organization_id: Mapped[str] = mapped_column(Text, nullable=False)
+    chunk_id: Mapped[str | None] = mapped_column(Text)
+    document_id: Mapped[str | None] = mapped_column(Text)
+    quote: Mapped[str | None] = mapped_column(Text)
+    score: Mapped[Decimal | None] = mapped_column(Numeric(6, 5))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Policy(Base):
+    __tablename__ = "policies"
+    __table_args__ = ({"schema": CORE_SCHEMA},)
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    scope: Mapped[str] = mapped_column(policy_scope_enum, nullable=False)
+    scope_id: Mapped[str | None] = mapped_column(Text)
+    organization_id: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    mode: Mapped[ExecutionMode | None] = mapped_column(execution_mode_enum)
+    weight_profile: Mapped[str | None] = mapped_column(Text)
+    weights: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    allow: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    deny: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    limits: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    classification_rules: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    fallback: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

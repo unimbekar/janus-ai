@@ -1,7 +1,6 @@
 services:
   postgres:
-    # pgvector is not used until Phase 6, but developing against the same image
-    # avoids a surprise migration failure later.
+    # pgvector is used from Phase 6 (knowledge.chunks). Same image as CI.
     image: pgvector/pgvector:pg16
     container_name: janus-postgres
     environment:

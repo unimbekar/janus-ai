@@ -1,0 +1,31 @@
+# Deterministic embedding model for knowledge ingestion in tests and local dev.
+slug: janus/mock-embed
+display_name: Janus Mock Embed
+provider: janus
+family: mock
+type: embedding
+tier: experimental
+context_window: 8192
+languages: [en, hi]
+capabilities:
+  - embeddings
+  - multilingual
+cost_class: free
+latency_class: low
+status: active
+metadata_verified: true
+notes: 8-dimensional hash embeddings for tests. Not a real embedding model.
+license:
+  name: Janus Internal
+  commercial_use: true
+deployments:
+  - key: mock-embed-local
+    backend: mock
+    protocol: native
+    deployment_type: local_dev
+    privacy_level: local
+    max_context: 8192
+    priority: 5
+    hardware:
+      accelerator: cpu
+      runtime: mock

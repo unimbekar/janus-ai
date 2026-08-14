@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from janus_core.errors import JanusError
 from janus_core.logging import get_logger
 from janus_schemas.chat import ChatCompletionRequest, ChatCompletionResponse
-from janus_schemas.common import Classification, ExecutionMode
+from janus_schemas.common import Classification, ExecutionMode, ModelType
 
 from gateway_app.backends import CallContext
 from gateway_app.deps import CallerDep, ExecutorDep, RegistryDep, ResolverDep, SettingsDep
@@ -98,6 +98,7 @@ async def chat_completions(
             preferences=preferences,
             constraints=request.janus.constraints,
             profile=profile,
+            model_type=ModelType.CHAT,
         ),
     )
 

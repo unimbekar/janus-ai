@@ -5,3 +5,4 @@ environment: test
 enabled_deployments:
   - mock-small-local
   - mock-reasoning-private
+  - mock-embed-local

@@ -10,11 +10,11 @@ import pytest
 from gateway_app.router.resolver import ExclusionReason, ResolutionRequest
 from janus_core.errors import NotFoundError, PolicyViolationError
 from janus_schemas.chat import RoutingConstraints, RoutingRequirements
-from janus_schemas.common import Classification, ExecutionMode, HealthState, PrivacyLevel
+from janus_schemas.common import Classification, ExecutionMode, HealthState, ModelType, PrivacyLevel
 
 
 def request_for(**overrides) -> ResolutionRequest:
-    defaults = {"model": "auto"}
+    defaults: dict = {"model": "auto", "model_type": ModelType.CHAT}
     return ResolutionRequest(**{**defaults, **overrides})
 
 
@@ -182,6 +182,16 @@ def test_unhealthy_deployments_are_excluded(registry, resolver, health) -> None:
     result = resolver.resolve(registry, request_for())
 
     assert health.state_for("mock-small-local") is HealthState.OFFLINE
+    assert [candidate.deployment.key for candidate in result.candidates] == [
+        "mock-reasoning-private"
+    ]
+
+
+def test_warming_deployments_are_excluded(registry, resolver, health) -> None:
+    health.record_probe("mock-small-local", HealthState.WARMING, None, "loading weights")
+
+    result = resolver.resolve(registry, request_for())
+
     assert [candidate.deployment.key for candidate in result.candidates] == [
         "mock-reasoning-private"
     ]

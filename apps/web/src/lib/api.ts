@@ -43,6 +43,7 @@ export interface ModelDeployment {
   privacy: string;
   region: string | null;
   availability: string;
+  accelerator: string | null;
 }
 
 export interface ModelSummary {
@@ -169,6 +170,7 @@ function mapModel(entry: RawModel): ModelSummary {
       privacy: deployment.privacy,
       region: deployment.region ?? null,
       availability: deployment.availability,
+      accelerator: deployment.accelerator ?? null,
     })),
   };
 }
@@ -223,7 +225,121 @@ export const api = {
 
   cancelConversation: (id: string) =>
     request<{ cancelled: number }>(`/v1/conversations/${id}/cancel`, { method: "POST" }),
+
+  knowledgeBases: async (): Promise<KnowledgeBase[]> => {
+    const body = await request<{ data: KnowledgeBase[] }>("/v1/knowledge-bases");
+    return body.data;
+  },
+
+  createKnowledgeBase: (body: { name: string; description?: string }) =>
+    request<KnowledgeBase>("/v1/knowledge-bases", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  ingestDocument: (knowledgeBaseId: string, body: { title: string; content: string }) =>
+    request<KnowledgeDocument>(`/v1/knowledge-bases/${knowledgeBaseId}/documents`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  searchKnowledge: (knowledgeBaseId: string, query: string) =>
+    request<{ data: SearchHit[] }>(`/v1/knowledge-bases/${knowledgeBaseId}/search`, {
+      method: "POST",
+      body: JSON.stringify({ query, limit: 4 }),
+    }),
+
+  agents: async (): Promise<AgentSummary[]> => {
+    const body = await request<{ data: AgentSummary[] }>("/v1/agents");
+    return body.data;
+  },
+
+  createAgent: (body: {
+    name: string;
+    slug: string;
+    instructions?: string;
+    knowledge_base_ids?: string[];
+    tools?: string[];
+    model?: string;
+  }) =>
+    request<AgentSummary>("/v1/agents", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  publishAgent: (id: string) =>
+    request<AgentSummary>(`/v1/agents/${id}/publish`, { method: "POST" }),
+
+  runAgent: (id: string, input: string) =>
+    request<AgentRun>(`/v1/agents/${id}/runs`, {
+      method: "POST",
+      body: JSON.stringify({ input }),
+    }),
+
+  usage: () => request<UsageSummary>("/v1/usage"),
+
+  deployments: async (): Promise<DeploymentRow[]> => {
+    const body = await request<{ data: DeploymentRow[] }>("/v1/deployments");
+    return body.data;
+  },
 };
+
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string | null;
+  embedding_model: string;
+  document_count: number;
+  created_at: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  title: string | null;
+  status: string;
+  chunk_count: number;
+  content_sha256: string | null;
+}
+
+export interface SearchHit {
+  chunk_id: string;
+  document_id: string;
+  content: string;
+  score: number;
+}
+
+export interface AgentSummary {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  current_version: number;
+}
+
+export interface AgentRun {
+  id: string;
+  status: string;
+  output: string | null;
+  step_count: number;
+  halt_reason: string | null;
+  citations: { quote?: string; score?: number }[];
+}
+
+export interface UsageSummary {
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: string;
+  requests: number;
+}
+
+export interface DeploymentRow {
+  model: string;
+  key: string;
+  privacy: string;
+  availability: string;
+  accelerator: string | null;
+  region: string | null;
+}
 
 interface RawModel {
   id: string;
@@ -246,6 +362,7 @@ interface RawModel {
       privacy: string;
       region?: string | null;
       availability: string;
+      accelerator?: string | null;
     }[];
   };
 }

@@ -13,11 +13,16 @@ from gateway_app.backends.anthropic import AnthropicBackend
 from gateway_app.backends.base import CallContext, HealthReport, ModelBackend
 from gateway_app.backends.bedrock import BedrockBackend
 from gateway_app.backends.gemini import GeminiBackend
+from gateway_app.backends.llamacpp import LlamaCppBackend
+from gateway_app.backends.mlx import MlxBackend
 from gateway_app.backends.mock import MockBackend
 from gateway_app.backends.ollama import OllamaBackend
 from gateway_app.backends.openai import OpenAIBackend
 from gateway_app.backends.openai_compatible import OpenAICompatibleBackend
 from gateway_app.backends.sarvam import SarvamBackend
+from gateway_app.backends.sglang import SGLangBackend
+from gateway_app.backends.transcription import TranscriptionBackend
+from gateway_app.backends.vllm import VllmBackend
 
 __all__ = [
     "BackendRegistry",
@@ -55,6 +60,11 @@ class BackendRegistry:
             "gemini": GeminiBackend(self._client),
             "sarvam": SarvamBackend(self._client),
             "bedrock": BedrockBackend(),
+            "vllm": VllmBackend(self._client),
+            "sglang": SGLangBackend(self._client),
+            "llamacpp": LlamaCppBackend(self._client),
+            "mlx": MlxBackend(self._client),
+            "transcription": TranscriptionBackend(self._client),
         }
 
     def get(self, backend_id: str) -> ModelBackend:

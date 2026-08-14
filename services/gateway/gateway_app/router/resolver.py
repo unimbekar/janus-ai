@@ -28,6 +28,7 @@ from janus_schemas.common import (
     DeploymentType,
     ExecutionMode,
     ModelTier,
+    ModelType,
     PrivacyLevel,
 )
 
@@ -63,6 +64,7 @@ class ExclusionReason(StrEnum):
     LANGUAGE = "language_unsupported"
     CONTEXT = "context_too_small"
     UNHEALTHY = "unhealthy"
+    MODEL_TYPE = "model_type"
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +90,7 @@ class ResolutionRequest:
     preferences: RoutingRequirements | None = None
     constraints: RoutingConstraints = field(default_factory=RoutingConstraints)
     profile: WeightProfile = WeightProfile.BALANCED
+    model_type: ModelType | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,6 +244,8 @@ class ModelResolver:
             return ExclusionReason.DISABLED
         if model.status != "active":
             return ExclusionReason.MODEL_INACTIVE
+        if request.model_type is not None and model.type is not request.model_type:
+            return ExclusionReason.MODEL_TYPE
         if not self._mode_allows(request.mode, deployment):
             return ExclusionReason.MODE
         if not self._classification_allows(request.classification, deployment):

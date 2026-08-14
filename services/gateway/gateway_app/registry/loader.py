@@ -102,6 +102,7 @@ def _deployment(raw: dict[str, Any], model_slug: str, path: Path) -> DeploymentR
             max_context=raw.get("max_context"),
             max_concurrency=raw.get("max_concurrency"),
             capability_overrides=dict(raw.get("capability_overrides", {})),
+            hardware={str(key): value for key, value in dict(raw.get("hardware") or {}).items()},
             priority=int(raw.get("priority", 100)),
             initial_health=HealthState(raw.get("initial_health", HealthState.READY)),
         )

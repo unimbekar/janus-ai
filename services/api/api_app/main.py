@@ -20,7 +20,17 @@ from api_app.conversations import ConversationService
 from api_app.db import Database, create_engine
 from api_app.gateway_client import GatewayClient
 from api_app.identity import IdentityService
-from api_app.routers import attachments, auth, conversations, inference, meta, organizations
+from api_app.routers import (
+    agents,
+    attachments,
+    auth,
+    conversations,
+    inference,
+    knowledge,
+    meta,
+    ops,
+    organizations,
+)
 from api_app.security import PasswordHashing
 from api_app.settings import ApiSettings, get_settings
 from api_app.storage import FilesystemObjectStore
@@ -152,6 +162,9 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     app.include_router(inference.router)
     app.include_router(conversations.router)
     app.include_router(attachments.router)
+    app.include_router(agents.router)
+    app.include_router(knowledge.router)
+    app.include_router(ops.router)
 
     instrument_app(app)
     return app

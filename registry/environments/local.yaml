@@ -7,4 +7,5 @@ environment: local
 enabled_deployments:
   - mock-small-local
   - mock-reasoning-private
+  - mock-embed-local
   - ollama-llama31-8b

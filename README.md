@@ -8,8 +8,12 @@ Multilingual capability — including strong Indic-language support through Sarv
 
 Website: <https://www.janus-intelligence.ai>
 
-> **Status: Phase 3 — Model Gateway, complete.**
-> The design set in [`docs/`](docs/) is the specification. Phase 3 makes the gateway a public product surface: OpenAI-compatible clients, Auto routing with a stored decision, and a catalog UI. See [phase-3.md](docs/phase-3.md) and [roadmap.md](docs/roadmap.md#phase-3--model-gateway).
+> **Status: Phases 0–10 shipped as working slices.**
+> Local product: chat, catalog, agents, knowledge, usage. AWS: Terraform in
+> [`infra/aws`](infra/aws) and [aws-deploy.md](docs/aws-deploy.md). Marketplace:
+> [marketplace.md](docs/marketplace.md) (seller verification is AWS-gated; not a
+> next-week guarantee). As-built notes: [phase-4](docs/phase-4.md) …
+> [phase-10](docs/phase-10.md).
 
 ---
 
@@ -21,6 +25,7 @@ Needs Docker, and — for working outside containers — Python 3.12+ with [uv](
 make env          # create .env from the example
 make stack-up     # postgres, migrations, gateway, api, web
 make smoke-chat   # log in, create a conversation, stream a mock reply
+make smoke-product # knowledge ingest/search + agent run + /v1/responses
 ```
 
 Open the web URL `make stack-up` prints (port 3000 unless `.env` overrides it), create a workspace, and send a message. Out of the box it answers from a deterministic mock model, so the whole path is verifiable with no API key and no GPU.
@@ -68,18 +73,20 @@ make run-web       # :3000
 
 ---
 
-## What Phase 3 delivers
+## What this build delivers
 
 | Area | State |
 |------|-------|
-| Model Gateway | OpenAI-compatible `/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/providers`; `jsk_` keys; per-org rate limits |
-| Routing | Deterministic requirement inference, weighted scoring, Auto, capability aliases (`janus/fast`, `janus/reasoning`, …) |
-| Telemetry | `telemetry.routing_decisions` and `telemetry.usage_records` on every completion when the gateway has a database |
-| Backends | mock, Ollama, generic OpenAI-compatible, plus OpenAI, Anthropic, Gemini, Sarvam, Bedrock adapters (cloud deployments off in local/test) |
-| Web | Persisted conversations with a sidebar, model catalog and detail pages |
-| Checks | Ruff, mypy, import-linter, web tests, API + gateway tests |
+| Chat | Persisted conversations, SSE, catalog, Auto routing |
+| Gateway | OpenAI-compatible `/v1/*`, `jsk_` keys, mock + Ollama + cloud adapters + vLLM/SGLang/llama.cpp/MLX |
+| Agents | Versioned agents, checkpointed retrieve/tool/compose loop, `/v1/responses` |
+| Knowledge | Text ingest, pgvector retrieve, citations on agent runs |
+| Ops | Usage totals, audit list, org policies, deployment health (no endpoints) |
+| Web | Chat, Models, Agents, Knowledge, Usage |
+| AWS | Terraform in `infra/aws`; runbook [aws-deploy.md](docs/aws-deploy.md) |
+| Marketplace | Preparation guide [marketplace.md](docs/marketplace.md) — seller approval is AWS-gated |
 
-Deferred deliberately: Janus-hosted GPU serving (Phase 4), agents (Phase 5), RAG (Phase 6). Cloud provider deployments stay out of the local overlay until credentials are reviewed in.
+Honest gaps: no live GPU fleet, no SSO/SOC 2, no LangGraph product, no PDF parsers, Marketplace listing is not submitted from this repo.
 
 ---
 
@@ -103,11 +110,8 @@ Two principles drive every decision in these documents:
 
 ## Design documents
 
-Start with [phase-3.md](docs/phase-3.md) if you want to see what actually runs today.
-— five diagrams covering the containers, a streaming request end to end, how a model
-is chosen, where tenancy is enforced, and what is deliberately not built yet.
-
-The rest is the specification, read in this order.
+Start with [phase-4.md](docs/phase-4.md)–[phase-10.md](docs/phase-10.md) for what this
+increment actually built, and [phase-3.md](docs/phase-3.md) for the gateway.
 
 | # | Document | Contents |
 |---|----------|----------|
@@ -115,17 +119,16 @@ The rest is the specification, read in this order.
 | 2 | [model-gateway.md](docs/model-gateway.md) | Gateway internals, backend abstraction, health, warming, local serving |
 | 3 | [model-routing.md](docs/model-routing.md) | Capability system, scoring, routing policies, fallback, Auto mode |
 | 4 | [model-registry.md](docs/model-registry.md) | Model + deployment registry schema, onboarding, license compliance |
-| 5 | [agents.md](docs/agents.md) | LangGraph runtime, agent policies, tools, MCP, marketplace |
+| 5 | [agents.md](docs/agents.md) | Runtime, agent policies, tools (LangGraph remains the design; Phase 5 is a loop) |
 | 6 | [database.md](docs/database.md) | PostgreSQL schema, multi-tenancy, RLS, migrations |
 | 7 | [api.md](docs/api.md) | Public API contract (OpenAI-compatible + Janus control plane) |
 | 8 | [security.md](docs/security.md) | Auth, RBAC, tenant isolation, data classification, policy engine |
-| 9 | [aws.md](docs/aws.md) | Hybrid ECS + EKS infrastructure, Terraform layout, GPU pools |
+| 9 | [aws.md](docs/aws.md) | Hybrid ECS + EKS infrastructure |
 | 10 | [observability.md](docs/observability.md) | OpenTelemetry, routing decision logs, metering, evaluation |
 | 11 | [roadmap.md](docs/roadmap.md) | Phases 1–10 with exit criteria |
-| — | [repository-structure.md](docs/repository-structure.md) | Proposed monorepo layout and ownership |
-| — | [phase-1.md](docs/phase-1.md) | What Phase 1 actually built, in diagrams |
-| — | [phase-2.md](docs/phase-2.md) | What Phase 2 actually built, in diagrams |
-| — | [phase-3.md](docs/phase-3.md) | What Phase 3 actually built, in diagrams |
+| — | [aws-deploy.md](docs/aws-deploy.md) | Apply Terraform to your AWS account |
+| — | [marketplace.md](docs/marketplace.md) | AWS Marketplace seller + listing prep |
+| — | [phase-1.md](docs/phase-1.md) … [phase-10.md](docs/phase-10.md) | As-built notes |
 | — | [adr/](docs/adr/) | Architecture decision records |
 
 ---

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from janus_schemas.common import ModelType
 from janus_schemas.embeddings import EmbeddingRequest, EmbeddingResponse
 
 from gateway_app.backends import CallContext
@@ -36,6 +37,7 @@ async def embeddings(
             mode=caller.mode,
             classification=caller.classification,
             requirements=request.janus.requirements,
+            model_type=ModelType.EMBEDDING,
         ),
     )
     response = await executor.embeddings(request, resolution, ctx)

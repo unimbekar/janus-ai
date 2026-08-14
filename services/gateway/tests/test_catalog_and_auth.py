@@ -84,6 +84,7 @@ def test_model_list_is_filtered_by_caller_policy(client) -> None:
     assert {item["id"] for item in everything["data"]} == {
         "janus/mock-small",
         "janus/mock-reasoning",
+        "janus/mock-embed",
     }
 
     sovereign = client.get("/v1/models", headers={"X-Janus-Mode": "sovereign"}).json()
@@ -119,7 +120,7 @@ def test_provider_list(client) -> None:
     body = client.get("/v1/providers").json()
 
     janus = next(item for item in body["data"] if item["id"] == "janus")
-    assert janus["model_count"] == 2
+    assert janus["model_count"] == 3
 
 
 def test_deployment_health_view_hides_infrastructure(client) -> None:
@@ -127,7 +128,7 @@ def test_deployment_health_view_hides_infrastructure(client) -> None:
 
     assert body["environment"] == "test"
     keys = {item["key"] for item in body["deployments"]}
-    assert keys == {"mock-small-local", "mock-reasoning-private"}
+    assert keys == {"mock-small-local", "mock-reasoning-private", "mock-embed-local"}
     assert "endpoint" not in client.get("/internal/deployments").text
 
 

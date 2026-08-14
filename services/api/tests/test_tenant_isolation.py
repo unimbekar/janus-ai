@@ -9,7 +9,15 @@ like.
 from __future__ import annotations
 
 import pytest
-from api_app.models import ApiKey, AuditEvent, Organization, OrganizationMember, User
+from api_app.models import (
+    Agent,
+    ApiKey,
+    AuditEvent,
+    KnowledgeBase,
+    Organization,
+    OrganizationMember,
+    User,
+)
 from janus_core.ids import IdPrefix, new_id
 from sqlalchemy import func, select, text
 
@@ -179,3 +187,43 @@ async def test_audit_events_cannot_be_updated_or_deleted(db) -> None:
             async with db.session(organization_id=alpha_id) as session:
                 await session.execute(text(statement))
         assert "permission denied" in str(excinfo.value).lower()
+
+
+async def test_agents_and_knowledge_are_tenant_scoped(db) -> None:
+    alpha_id, beta_id, user_id = await _seed_two_tenants(db)
+
+    async with db.session(organization_id=alpha_id) as session:
+        session.add(
+            Agent(
+                id=new_id(IdPrefix.AGENT),
+                organization_id=alpha_id,
+                slug="alpha-bot",
+                name="Alpha",
+                created_by=user_id,
+            )
+        )
+        session.add(
+            KnowledgeBase(
+                id=new_id(IdPrefix.KNOWLEDGE_BASE),
+                organization_id=alpha_id,
+                name="Alpha KB",
+                embedding_model="janus/mock-embed",
+                created_by=user_id,
+            )
+        )
+
+    async with db.session(organization_id=beta_id) as session:
+        agents = (await session.scalars(select(Agent))).all()
+        bases = (await session.scalars(select(KnowledgeBase))).all()
+
+    assert agents == []
+    assert bases == []
+
+    async with db.session(organization_id=alpha_id) as session:
+        agents = (await session.scalars(select(Agent))).all()
+        bases = (await session.scalars(select(KnowledgeBase))).all()
+
+    assert len(agents) == 1
+    assert agents[0].organization_id == alpha_id
+    assert len(bases) == 1
+    assert bases[0].organization_id == alpha_id

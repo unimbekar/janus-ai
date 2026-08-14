@@ -1,0 +1,46 @@
+# Example Janus-hosted open-weight chat model behind vLLM.
+#
+# Not enabled in local/test overlays. Enable a deployment key in
+# registry/environments/<env>.yaml once a private endpoint exists.
+slug: janus/llama3.1-8b-hosted
+display_name: Llama 3.1 8B (Janus-hosted)
+provider: janus
+family: llama
+version: "3.1"
+parameters: 8B
+type: chat
+tier: open_source
+context_window: 131072
+max_output_tokens: 4096
+languages: [en]
+capabilities:
+  - streaming
+  - coding
+  - tool_calling
+  - long_context
+cost_class: low
+latency_class: medium
+status: active
+metadata_verified: false
+notes: >-
+  Placeholder for a private-subnet vLLM deployment. Endpoint values never appear
+  in the public catalog.
+license:
+  name: Llama 3.1 Community License
+  commercial_use: true
+deployments:
+  - key: janus-vllm-llama31-8b
+    backend: vllm
+    protocol: openai_compatible
+    deployment_type: janus_gpu
+    privacy_level: private
+    endpoint: ${JANUS_VLLM_LLAMA31_URL:-http://127.0.0.1:8000/v1}
+    provider_model_id: meta-llama/Meta-Llama-3.1-8B-Instruct
+    region: us-east-1
+    max_context: 32768
+    max_concurrency: 8
+    priority: 40
+    hardware:
+      accelerator: gpu
+      runtime: vllm
+    initial_health: warming

@@ -48,6 +48,9 @@ deployments:
     max_context: 32768
     max_concurrency: 2
     priority: 50
+    hardware:
+      accelerator: gpu
+      runtime: ollama
     # Nothing is loaded until the first request, so start as warming and let the
     # health probe promote it.
     initial_health: warming

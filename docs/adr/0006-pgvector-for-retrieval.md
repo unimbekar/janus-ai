@@ -1,6 +1,6 @@
 # ADR 0006 — Aurora PostgreSQL + pgvector for Phase 6 retrieval
 
-**Status:** Proposed · **Date:** 2026-08-13 · **Deciders:** Principal Architect, ML Infrastructure Engineer
+**Status:** Accepted · **Date:** 2026-08-13 · **Deciders:** Principal Architect, ML Infrastructure Engineer
 
 ## Context
 

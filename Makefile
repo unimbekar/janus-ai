@@ -106,6 +106,10 @@ run-web: ## Run the web app
 smoke-chat: ## Log in, create a conversation, stream one reply
 	$(UV) run python scripts/smoke_chat.py
 
+.PHONY: smoke-product
+smoke-product: ## Knowledge, agent run, and /v1/responses against the running API
+	$(UV) run python scripts/smoke_product.py
+
 # ------------------------------------------------------------------- tests
 
 .PHONY: test

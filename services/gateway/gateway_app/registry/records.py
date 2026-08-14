@@ -48,6 +48,7 @@ class DeploymentRecord:
     max_context: int | None = None
     max_concurrency: int | None = None
     capability_overrides: dict[str, bool] = field(default_factory=dict)
+    hardware: dict[str, str | int] = field(default_factory=dict)
     priority: int = 100
     enabled: bool = True
     initial_health: HealthState = HealthState.READY
@@ -70,6 +71,7 @@ class DeploymentRecord:
             region=self.region,
             availability=availability.value,
             max_context=self.max_context,
+            accelerator=str(self.hardware.get("accelerator")) if self.hardware else None,
         )
 
 

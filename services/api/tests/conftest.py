@@ -102,10 +102,14 @@ async def clean_tables(settings, migrated_database) -> AsyncIterator[None]:
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE chat.attachments, chat.messages, chat.conversations, "
-                "core.audit_events, core.api_keys, core.sessions, "
-                "core.organization_members, core.team_members, core.teams, "
-                "core.policies, core.organizations, core.users CASCADE"
+                "TRUNCATE chat.citations, chat.attachments, chat.messages, "
+                "chat.conversations, knowledge.chunks, knowledge.documents, "
+                "knowledge.knowledge_bases, agent.checkpoints, agent.agent_steps, "
+                "agent.agent_runs, agent.tools, agent.mcp_servers, "
+                "agent.agent_versions, agent.agents, telemetry.usage_records, "
+                "telemetry.routing_decisions, core.audit_events, core.api_keys, "
+                "core.sessions, core.organization_members, core.team_members, "
+                "core.teams, core.policies, core.organizations, core.users CASCADE"
             )
         )
     await engine.dispose()

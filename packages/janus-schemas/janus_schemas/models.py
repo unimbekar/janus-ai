@@ -60,6 +60,7 @@ class DeploymentSummary(BaseModel):
     region: str | None = None
     availability: str = "ready"
     max_context: int | None = None
+    accelerator: str | None = None
 
 
 class LicenseSummary(BaseModel):

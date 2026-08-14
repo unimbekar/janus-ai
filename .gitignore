@@ -39,6 +39,7 @@ out/
 *.tfplan
 crash.log
 .terraform.lock.hcl
+infra/aws/terraform.tfvars
 
 # Kubernetes rendered output
 deploy/kubernetes/**/rendered/

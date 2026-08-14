@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (never commit secrets).
+# Credentials come from the environment / AWS CLI, not this file.
+
+aws_account_id = "123456789012"
+aws_region     = "us-east-1"
+environment    = "staging"
+name_prefix    = "janus"
+image_tag      = "latest"
+
+# Leave empty for HTTP-only staging smoke. Production needs an ACM cert in this region.
+acm_certificate_arn = ""
+
+# Phase 8 — keep false until GPU capacity and budget are approved.
+enable_gpu_eks = false

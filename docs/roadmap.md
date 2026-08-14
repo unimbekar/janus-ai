@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0–3 complete · Phase 4 next · **Last updated:** 2026-08-14
+**Status:** Phases 0–10 as-built slices complete · **Last updated:** 2026-08-14
 
 Ten phases. Each is a reviewable increment with explicit exit criteria; none begins until the previous one meets them.
 
@@ -66,7 +66,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 4 — Janus-hosted and local models
+## Phase 4 — Janus-hosted and local models ✓
 
 | | |
 |---|---|
@@ -80,7 +80,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 5 — Agents
+## Phase 5 — Agents ✓
 
 | | |
 |---|---|
@@ -94,7 +94,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 6 — RAG and knowledge
+## Phase 6 — RAG and knowledge ✓
 
 | | |
 |---|---|
@@ -108,7 +108,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 7 — AWS production
+## Phase 7 — AWS production ✓ (Terraform + runbook; apply is operator-driven)
 
 | | |
 |---|---|
@@ -122,7 +122,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 8 — GPU infrastructure
+## Phase 8 — GPU infrastructure (foundation)
 
 | | |
 |---|---|
@@ -136,7 +136,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 9 — Enterprise
+## Phase 9 — Enterprise (control-plane slice)
 
 | | |
 |---|---|
@@ -150,7 +150,7 @@ Diagrams of what this phase produced are in [phase-3.md](./phase-3.md).
 
 ---
 
-## Phase 10 — Advanced AI
+## Phase 10 — Advanced AI (surfaces)
 
 | | |
 |---|---|

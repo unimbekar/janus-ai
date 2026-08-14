@@ -14,6 +14,9 @@ export function Topbar({
   const pathname = usePathname();
   const onChat = pathname === "/";
   const onModels = pathname.startsWith("/models");
+  const onAgents = pathname.startsWith("/agents");
+  const onKnowledge = pathname.startsWith("/knowledge");
+  const onUsage = pathname.startsWith("/usage") || pathname.startsWith("/deployments");
 
   return (
     <header className="topbar">
@@ -27,6 +30,15 @@ export function Topbar({
         </Link>
         <Link href="/models" className={onModels ? "active" : undefined}>
           Models
+        </Link>
+        <Link href="/agents" className={onAgents ? "active" : undefined}>
+          Agents
+        </Link>
+        <Link href="/knowledge" className={onKnowledge ? "active" : undefined}>
+          Knowledge
+        </Link>
+        <Link href="/usage" className={onUsage ? "active" : undefined}>
+          Usage
         </Link>
       </nav>
       <div className="topbar-spacer" />

@@ -46,6 +46,10 @@ class IdPrefix(StrEnum):
     PROVIDER = "prv"
     LICENSE = "lic"
     USAGE = "usg"
+    TOOL = "tol"
+    MCP_SERVER = "mcps"
+    CITATION = "cit"
+    AGENT_VERSION = "agv"
 
 
 def _encode(value: int, length: int) -> str:
