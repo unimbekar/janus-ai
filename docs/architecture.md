@@ -1,8 +1,10 @@
 # Architecture — Janus Intelligence
 
-**Status:** Draft for review (Phase 0) · **Owner:** Principal Architect · **Last updated:** 2026-08-13
+**Status:** Living architecture (Phases 0–10 as-built slices) · **Owner:** Principal Architect · **Last updated:** 2026-08-14
 
-Companion documents: [model-gateway.md](./model-gateway.md) · [model-routing.md](./model-routing.md) · [agents.md](./agents.md) · [database.md](./database.md) · [api.md](./api.md) · [security.md](./security.md) · [aws.md](./aws.md) · [observability.md](./observability.md) · [roadmap.md](./roadmap.md)
+Companion documents: [model-gateway.md](./model-gateway.md) · [model-routing.md](./model-routing.md) · [agents.md](./agents.md) · [database.md](./database.md) · [api.md](./api.md) · [security.md](./security.md) · [aws.md](./aws.md) · [aws-deploy.md](./aws-deploy.md) · [observability.md](./observability.md) · [roadmap.md](./roadmap.md)
+
+**Read this for:** what the product is, how a request moves through the system, and how the AWS deployment absorbs load. Detail for each plane lives in the companions above.
 
 ---
 
@@ -66,11 +68,11 @@ flowchart TB
     Admin["Admin: models · deployments · usage"]
   end
 
-  subgraph Runtime["AI Runtime — LangChain / LangGraph"]
-    Chat["Chat orchestration"]
-    AgentRT["Agent execution (LangGraph)"]
-    RAG["Retrieval pipeline"]
-    Tools["Tool registry · MCP client"]
+  subgraph Runtime["AI Runtime — library inside janus-api"]
+    Chat["Chat orchestration (ChatRunner)"]
+    AgentRT["Agent execution (checkpointed loop)"]
+    RAG["Retrieval (pgvector)"]
+    Tools["Native tools · MCP later"]
   end
 
   subgraph Gateway["Model Gateway — janus-gateway (ECS Fargate)"]
@@ -150,6 +152,85 @@ flowchart TB
 
 Five components, each justified by a distinct scaling or security boundary. No further service decomposition without an ADR.
 
+### 2.2 Overall workflow
+
+Janus is three planes plus a model plane. **Only the gateway talks to model providers.** Everything else is tenant data, orchestration, or UI.
+
+```text
+Browser / OpenAI SDK
+        │
+        ▼
+   janus-web (optional)          session cookie; proxies /api/* → api
+        │
+        ▼
+   janus-api                     auth · orgs · conversations · agents · knowledge
+        │                        resolves org mode / classification
+        │                        persists messages / agent runs
+        ▼
+   AI Runtime (in-process)       chat stream · agent retrieve→tool→compose loop
+        │                        never imports a provider SDK
+        ▼
+   janus-gateway                 auth (jsk_ or service token) · rate limit
+        │                        classify · policy · Auto router · health
+        │                        meter · stream SSE
+        ▼
+   Model plane                   mock · Ollama · cloud APIs · (later) Janus GPU
+```
+
+| Product action | Path |
+|----------------|------|
+| **Chat turn** | Web → `POST /v1/conversations/{id}/messages` → ChatRunner → gateway `/v1/chat/completions` (SSE) → persist assistant message + attribution |
+| **Programmatic chat** | Client → gateway (or api alias) `/v1/chat/completions` with `jsk_` key → same router → stream |
+| **Agent run** | Web/API → `POST /v1/agents/{id}/runs` → optional knowledge retrieve → tools → gateway completion → checkpoints + citations |
+| **Knowledge** | API ingest → chunk → gateway embeddings (or hash fallback) → pgvector → search / agent retrieve |
+| **Catalog / usage** | API → gateway `/v1/models` (policy-filtered) · telemetry tables for usage |
+
+Local compose and AWS both run the same three services (`web`, `api`, `gateway`) against Postgres (+ Redis on AWS / full stack). The difference is who operates the boxes, not the call graph.
+
+### 2.3 Serverless compute — and how it scales under load
+
+**“Serverless” here means ECS Fargate:** you ship containers; AWS runs the hosts. There are no EC2 instances to patch for the core plane, and no Lambda request-response model. Long-lived **SSE streams** need containers behind an ALB, not short-lived functions.
+
+```mermaid
+flowchart LR
+  Users["Many concurrent users"] --> ALB["Application Load Balancer"]
+  ALB --> Web["janus-web<br/>N Fargate tasks"]
+  ALB --> API["janus-api<br/>N Fargate tasks"]
+  API --> GW["janus-gateway<br/>N Fargate tasks"]
+  GW --> Cloud["Cloud providers<br/>their quotas"]
+  GW --> GPU["Janus GPU / EKS<br/>Phase 8"]
+  API --> DB[("Aurora<br/>Serverless v2 ACU")]
+  GW --> DB
+  GW --> Redis[("Redis<br/>rate limits")]
+```
+
+| Layer | What absorbs load | What happens when load rises |
+|-------|-------------------|------------------------------|
+| **Edge** | ALB (optional CloudFront + WAF later) | Spreads connections across healthy tasks; health checks remove bad tasks |
+| **Web** | Stateless Next.js tasks | Scale on CPU / request count. Browser only needs the web origin; API is proxied |
+| **API** | Stateless FastAPI tasks | Scale on CPU / ALB requests. Holds chat and agent orchestration in-process ([ADR 0004](./adr/0004-ai-runtime-boundary.md)) |
+| **Gateway** | Stateless FastAPI tasks | Scale primarily on **active streams** (I/O-bound), not CPU alone. Each stream holds a connection for the whole generation |
+| **Postgres** | Aurora Serverless v2 (staging Terraform) or provisioned + readers in prod design | ACUs / instances grow with connections and query load; RLS stays per-connection |
+| **Redis** | ElastiCache | Shared rate limits and cache so extra gateway tasks do not invent separate quotas |
+| **Model plane** | Provider APIs or Janus GPU | **Usually the real ceiling.** Cloud providers enforce RPM/TPM; Janus GPUs add replicas / node pools (Phase 8). The gateway falls back only within policy |
+
+**What does *not* scale by adding Fargate tasks alone**
+
+1. A single provider’s rate limit — more gateway tasks just hit the same quota faster unless keys and policies are split.
+2. One Aurora writer under a write-heavy storm — readers help reporting; chat writes still need headroom and pooling.
+3. A pinned deployment that is `warming` / `offline` — the router excludes it; load shifts to eligible deployments or returns `no_eligible_model`.
+4. Agent runs that occupy an API worker for many gateway round-trips — under extreme agent concurrency, extract the runtime to its own service (ADR 0004 trigger).
+
+**Protection under overload**
+
+- Per-org **rate limits** on the gateway (Redis when shared, in-process otherwise).
+- **Bulkheads** — bounded concurrency per deployment so one slow backend cannot exhaust the gateway.
+- **Health-based routing** — degraded / offline deployments are deprioritized or excluded.
+- **Load shedding** — typed errors with `Retry-After` rather than unbounded queues (design; tune from SLOs).
+- **Multi-AZ** Fargate + Aurora so a single AZ loss does not take the product down.
+
+**Honesty about the Terraform in `infra/aws` today:** services start at a fixed `desired_count`. Target autoscaling (ALB request count, CPU, custom `janus.streams.active`) is specified in [aws.md §2](./aws.md#2-core-platform-on-ecs-fargate) and should be enabled before production traffic. Scaling *mechanically* is Fargate task count + Aurora capacity + Redis + provider/GPU capacity — not a single knob.
+
 ---
 
 ## 3. Layer contract
@@ -161,7 +242,7 @@ UI / SDK
 Control plane (janus-api)          ← owns tenant data + policy definitions
    │  invokes runtime with resolved context
    ▼
-AI Runtime (LangChain / LangGraph) ← orchestration only; never picks a provider
+AI Runtime (library in janus-api)  ← orchestration only; never picks a provider
    │  OpenAI-compatible calls
    ▼
 Model Gateway (janus-gateway)      ← security + policy + routing + metering boundary
@@ -173,7 +254,7 @@ Model plane (cloud / Janus GPU / local)
 **Hard rules**
 
 1. The runtime and all feature code call **only** the gateway for inference. No direct provider SDK use outside `janus-gateway` adapters.
-2. LangGraph nodes never name a provider. They request capabilities; the router decides ([model-routing.md](./model-routing.md)).
+2. Agent / chat steps never name a provider. They request capabilities (or `auto`); the router decides ([model-routing.md](./model-routing.md)).
 3. The web app never receives provider credentials, internal endpoints, or raw routing internals.
 4. Provider credentials live in AWS Secrets Manager, loaded only by `janus-gateway`.
 
@@ -183,34 +264,33 @@ Violation of rule 1 or 4 is a release blocker.
 
 ## 4. AI Runtime
 
-The runtime turns a user or agent request into a sequence of model, tool, and retrieval calls.
+The runtime turns a user or agent request into a sequence of model, tool, and retrieval calls. It lives **inside `janus-api`** as application code (not a separate service).
 
 ### 4.1 Responsibilities
 
 | Concern | Owner |
 |---------|-------|
 | Prompt assembly, message windowing, system prompt versioning | Runtime |
-| Tool selection and execution loop | Runtime (LangGraph) |
-| Retrieval (query rewriting, search, reranking, citations) | Runtime |
+| Tool selection and execution loop | Runtime (checkpointed retrieve → tool → compose loop today) |
+| Retrieval (chunk search, citations) | Runtime + pgvector |
 | Model choice, provider credentials, fallback, metering | **Gateway** |
 | Conversation persistence | Control plane |
 
-### 4.2 Why LangChain and LangGraph
+### 4.2 As-built vs design target
 
-LangChain provides adapters, message types, and streaming primitives. LangGraph provides durable, inspectable state machines for multi-step agents — checkpointing, interrupts, and human-in-the-loop, which a hand-rolled loop would have to reinvent.
+| Today | Design target (docs / ADR 0004) |
+|-------|----------------------------------|
+| Custom agent loop in `api_app/agents.py` with Postgres checkpoints | Optional LangGraph (or equivalent) facade if interrupts / resume / HITL need a graph engine |
+| ChatRunner streams via the gateway | Unchanged |
+| No LangChain / LangSmith in the monorepo | LangSmith remains an *optional* LLM-trace sink for orgs that accept an external processor ([observability.md](./observability.md)) |
 
-Both are used through a thin internal facade (`packages/janus-runtime`) so a future migration does not touch feature code.
+Framework choice must not weaken ADR 0001: orchestration may use libraries; **inference still goes only through the gateway**.
 
-### 4.3 Runtime deployment options
+### 4.3 Runtime deployment
 
-**Decision pending.** Two candidates:
+**Accepted for Phases 1–6:** library inside `janus-api` ([adr/0004-ai-runtime-boundary.md](./adr/0004-ai-runtime-boundary.md)).
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **A — library inside `janus-api`** (recommended for Phase 1–5) | Fewer moving parts, simpler local dev, no extra hop | Long agent runs occupy API capacity |
-| B — separate `janus-runtime` service | Independent scaling for long agent runs | Extra service, extra latency, more IAM surface |
-
-Recommendation: start with **A**, extract to **B** when agent runs exceed request-lifetime limits or need separate autoscaling. Trigger condition and migration path recorded in [adr/0004-ai-runtime-boundary.md](./adr/0004-ai-runtime-boundary.md).
+Extract to a separate `janus-runtime` service when agent runs exceed request-lifetime limits or force API autoscaling that harms chat latency.
 
 ---
 
@@ -243,13 +323,14 @@ Failure semantics: if the policy-constrained fallback chain is exhausted, Janus 
 
 ## 6. Data flow — chat turn with retrieval
 
+Chat persistence and streaming run in `janus-api`. The “AI Runtime” participant below is **in-process** (ChatRunner / agent loop), not a separate network hop.
+
 ```mermaid
 sequenceDiagram
   autonumber
   actor U as User
   participant W as janus-web
-  participant A as janus-api
-  participant R as AI Runtime
+  participant A as janus-api (+ runtime)
   participant G as janus-gateway
   participant V as pgvector
   participant M as Model backend
@@ -258,26 +339,20 @@ sequenceDiagram
   U->>W: Send message (conversation_id)
   W->>A: POST /v1/conversations/{id}/messages (session cookie)
   A->>A: Authorize · persist user message · resolve org policy
-  A->>R: Invoke chat graph (context, policy, classification hint)
-  R->>G: POST /v1/embeddings (retrieval query)
-  G->>M: Embedding backend
-  M-->>G: Vector
-  G-->>R: Vector (metered)
-  R->>V: Similarity search (org-scoped, RLS)
-  V-->>R: Chunks + citations
-  R->>G: POST /v1/chat/completions (stream, capability requirements)
+  A->>G: POST /v1/chat/completions (stream, requirements)
   G->>G: Classify · policy · route · health gate
-  G->>M: Provider call
+  G->>M: Provider / local / mock call
   loop tokens
     M-->>G: delta
-    G-->>R: SSE delta
-    R-->>A: SSE delta
+    G-->>A: SSE delta
     A-->>W: SSE delta
     W-->>U: Rendered stream
   end
   G->>O: Routing decision · usage · cost · TTFT
-  A->>A: Persist assistant message + citations + model attribution
+  A->>A: Persist assistant message + model attribution
 ```
+
+Agent runs that use knowledge add a retrieve step (embeddings via the gateway, similarity search under RLS) before the compose completion — same gateway boundary.
 
 Cancellation propagates the full length of the chain; partial output and partial usage are still recorded.
 
@@ -374,12 +449,12 @@ Mode is set per organization (ceiling), per agent, and per request (may only nar
 | Layer | Choice | Rationale | Rejected |
 |-------|--------|-----------|----------|
 | Web | Next.js + TypeScript + Tailwind | Streaming SSR, mature ecosystem, team familiarity | SPA-only; Streamlit |
-| API | Python 3.12 + FastAPI + Pydantic v2 | Async streaming, typed contracts, same language as AI ecosystem | Node API (splits AI tooling), Go (loses LangChain) |
-| Orchestration | LangChain + LangGraph behind a facade | Durable agent state, adapter breadth | Hand-rolled agent loop |
+| API | Python 3.12 + FastAPI + Pydantic v2 | Async streaming, typed contracts, same language as AI ecosystem | Node API (splits AI tooling) |
+| Orchestration | In-process runtime in `janus-api` (checkpointed agent loop); LangGraph optional later | Matches ADR 0004; gateway remains sole inference path | Provider SDKs in feature code |
 | Database | Aurora PostgreSQL 16 + pgvector | One store for relational + vectors at Phase-6 scale; RLS for tenancy | Separate vector DB on day one |
 | Cache / limits | ElastiCache Redis | Rate limits, health cache, stream fan-out | In-process only |
-| Async | SQS + workers | Ingestion, evals, rollups | Celery+RabbitMQ (extra ops) |
-| Core compute | ECS Fargate | No cluster ops for stateless services | EKS for everything |
+| Async | SQS + workers (design; workers not yet required for the text RAG path) | Ingestion, evals, rollups | Celery+RabbitMQ (extra ops) |
+| Core compute | **ECS Fargate** (serverless containers) | No cluster ops for stateless services; scales by task count | EKS for everything; Lambda for SSE |
 | GPU compute | EKS + GPU node groups (Phase 8) | Device plugins, autoscaling, model controllers genuinely need K8s | GPU on ECS; SageMaker-only |
 | IaC | Terraform | Team standard, multi-account | CDK, console |
 | Telemetry | OpenTelemetry → CloudWatch/OTLP backend | Vendor-neutral traces and metrics | Provider-specific SDKs only |
@@ -435,13 +510,13 @@ Local development must not require AWS GPU infrastructure. A `mock` backend with
 
 | # | Decision | Status |
 |---|----------|--------|
-| 0001 | Model Gateway is the sole inference path and a security boundary | Proposed |
-| 0002 | OpenAI-compatible protocol as internal and external lingua franca | Proposed |
-| 0003 | Hybrid ECS (core) + EKS (GPU only) | Proposed |
-| 0004 | AI Runtime starts as a library in `janus-api` | Proposed |
-| 0005 | Shared-schema multi-tenancy with Postgres RLS | Proposed |
-| 0006 | Aurora PostgreSQL + pgvector for Phase 6 retrieval | Proposed |
-| 0007 | Platform-scoped model registry with per-org visibility policies | Proposed |
+| 0001 | Model Gateway is the sole inference path and a security boundary | Accepted |
+| 0002 | OpenAI-compatible protocol as internal and external lingua franca | Accepted |
+| 0003 | Hybrid ECS Fargate (core) + EKS (GPU only) | Accepted |
+| 0004 | AI Runtime starts as a library in `janus-api` | Accepted |
+| 0005 | Shared-schema multi-tenancy with Postgres RLS | Accepted |
+| 0006 | Aurora PostgreSQL + pgvector for Phase 6 retrieval | Accepted |
+| 0007 | Platform-scoped model registry with per-org visibility policies | Accepted |
 
 Records: [adr/](./adr/).
 
@@ -449,9 +524,10 @@ Records: [adr/](./adr/).
 
 ## 14. Open questions
 
-1. **Runtime boundary** — accept Option A (library) for Phase 1–5, or split immediately?
-2. **Secondary region timing** — `us-east-1` is primary; is `us-west-2` needed at launch for availability, or after the first enterprise contract with a residency requirement?
-3. **Identity provider** — build local auth first, or start with an external IdP (Cognito/Auth0/WorkOS) for SSO?
-4. **Vector store** — commit to pgvector through Phase 6, or design for OpenSearch from the start?
-5. **Cost attribution granularity** — per organization, per user, per conversation, or per agent run?
-6. **Sarvam contract** — API rate limits and self-hosting license terms, needed to finalize routing tiers.
+1. **Secondary region timing** — `us-east-1` is primary; is `us-west-2` needed at launch for availability, or after the first enterprise contract with a residency requirement?
+2. **Identity provider** — keep local auth, or add Cognito/Auth0/WorkOS for SSO (Phase 9)?
+3. **Cost attribution granularity** — per organization, per user, per conversation, or per agent run?
+4. **Production autoscaling thresholds** — concrete target/max task counts and stream gauges before customer traffic.
+5. **Sarvam contract** — API rate limits and self-hosting license terms, needed to finalize routing tiers.
+
+Resolved earlier: runtime stays a library for now (0004); pgvector through Phase 6 (0006).
