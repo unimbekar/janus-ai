@@ -7,8 +7,11 @@
 
 **[ui-mockups/index.html](./ui-mockups/index.html)** — browser-framed screens that reuse the real product CSS (`globals.css`) and the same layout/classes as `apps/web`. Open the file in Chrome/Firefox for a sales walkthrough; sticky tabs jump Sign in → Chat → Models → Detail → Knowledge → Agents → Usage.
 
+**JPEG screenshots** (ready for slides): [ui-mockups/screenshots/](./ui-mockups/screenshots/) — `sign-in.jpg`, `chat.jpg`, `models.jpg`, `model-detail.jpg`, `knowledge.jpg`, `agents.jpg`, `usage.jpg`.
+
 ```bash
-xdg-open docs/ui-mockups/index.html
+# headless Spark: serve and open from your laptop
+cd docs/ui-mockups && python3 -m http.server 8765 --bind 0.0.0.0
 ```
 
 Related: [sales.md](./sales.md) · [architecture.md](./architecture.md) · [api.md](./api.md) · [ui-mockups/README.md](./ui-mockups/README.md)
