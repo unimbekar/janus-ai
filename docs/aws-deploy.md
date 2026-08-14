@@ -21,7 +21,15 @@ temporary env vars) on the machine that runs Terraform.
 - Terraform ≥ 1.5
 - This repository checked out
 
-On the DGX host, install the CLI tools with the shared Python 3.12 venv:
+**Recommended:** from the repo root run the customer wizard:
+
+```bash
+./setup.sh --aws
+# installs AWS CLI + Terraform if needed, writes terraform.tfvars,
+# optionally bootstraps S3/DynamoDB state and terraform plan/apply
+```
+
+On the DGX host, the older developer path still works:
 
 ```bash
 venv                 # alias → dgx-ai-lab/.venv (Python 3.12)

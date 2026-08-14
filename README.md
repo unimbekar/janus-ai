@@ -19,9 +19,25 @@ Website: <https://www.janus-intelligence.ai>
 
 ## Run it locally
 
-Needs Docker, and — for working outside containers — Python 3.12+ with [uv](https://docs.astral.sh/uv/) and Node 20.12+ (22 matches CI). If the distro Node is older, `make node` installs 22 under `~/.local/node-v22` and Make uses it automatically.
+**Customer / Marketplace path (recommended):** one wizard installs tools, configures `.env`, and starts the stack:
 
-On this DGX host, activate the shared Python 3.12 environment with your `venv` alias first (`dgx-ai-lab`), then bootstrap host tools:
+```bash
+chmod +x setup.sh
+./setup.sh                 # interactive: Local / AWS / Tools
+# or non-interactive eval:
+./setup.sh --local --yes
+```
+
+Needs Docker. The script can offer to install Docker Engine (sudo). It creates a repo-local Python 3.12 venv (`.venv`), installs Node 22 under `~/.local` if needed, syncs dependencies, picks free ports, runs `make stack-up`, and prints the UI URL.
+
+For **AWS deploy** from the same entry point:
+
+```bash
+./setup.sh --aws           # credentials, tfvars, optional plan/apply
+./setup.sh --aws --apply   # also terraform apply (costs money)
+```
+
+Developer bootstrap on this DGX host (shared `venv` alias + host CLIs) remains:
 
 ```bash
 venv                 # Python 3.12 from dgx-ai-lab

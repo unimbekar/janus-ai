@@ -70,11 +70,38 @@ If seller verification is still pending, you can still prepare assets below.
    - Buyer provides VPC or uses the included Terraform
    - Buyer stores secrets in Secrets Manager
    - Buyer runs `alembic upgrade head` once
-3. Optional: wrap `infra/aws` as a CloudFormation custom resource or document
+3. **Customer entry point:** ship / document `./setup.sh` as the one-step installer:
+   - `./setup.sh --local --yes` — eval on any Linux box with Docker
+   - `./setup.sh --aws` — AWS CLI, Terraform, tfvars, optional apply
+4. Optional: wrap `infra/aws` as a CloudFormation custom resource or document
    “apply Terraform from the seller-provided package”.
-4. Submit the Container product in the Management Portal with pricing and
+5. Submit the Container product in the Management Portal with pricing and
    fulfillment options.
-5. Respond to AWS reviewer questions promptly (common delays live here).
+6. Respond to AWS reviewer questions promptly (common delays live here).
+
+### Buyer quick start (copy into listing)
+
+```bash
+# After downloading / cloning the Janus package:
+chmod +x setup.sh
+./setup.sh
+# Choose: 1) Local  2) AWS  3) Tools only
+```
+
+Silent local eval:
+
+```bash
+./setup.sh --local --yes
+# Open the URL the script prints → Create workspace → Chat
+```
+
+AWS into the subscriber account:
+
+```bash
+./setup.sh --aws
+# Follow prompts for region + account; keys via aws configure (never in git)
+# Full steps: docs/aws-deploy.md
+```
 
 ---
 
