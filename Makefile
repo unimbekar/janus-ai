@@ -5,6 +5,12 @@ UV ?= uv
 COMPOSE ?= docker compose
 API_DIR := services/api
 TEST_DB_URL ?= postgresql+asyncpg://janus:janus@localhost:5432/janus_test
+# Next 16 and Vitest 4 need Node 20.12+ (`styleText` in node:util). CI uses 22.
+# Prefer a user-local install when the distro Node is too old.
+NODE22 := $(HOME)/.local/node-v22
+ifneq ($(wildcard $(NODE22)/bin/node),)
+export PATH := $(NODE22)/bin:$(PATH)
+endif
 
 .PHONY: help
 help: ## Show available targets
@@ -17,6 +23,14 @@ help: ## Show available targets
 install: ## Install the Python workspace and web dependencies
 	$(UV) sync
 	cd apps/web && npm install
+
+.PHONY: node
+node: ## Install Node 22 locally (needed when the distro Node is older than 20.12)
+	@mkdir -p "$(NODE22)"
+	docker run --rm --user root -v "$(NODE22):/out" node:22-bookworm-slim \
+		bash -c 'tar -C /usr/local -cf - bin/node bin/npm bin/npx bin/corepack lib include share | tar -C /out -xf -'
+	@echo "Node $$("$(NODE22)/bin/node" -v) installed at $(NODE22)"
+	@echo "make targets will use it automatically. For a shell: export PATH=\"$(NODE22)/bin:\$$PATH\""
 
 .PHONY: env
 env: ## Create .env from the example if it does not exist
@@ -81,8 +95,8 @@ run-web: ## Run the web app on :3000
 # ------------------------------------------------------------------- tests
 
 .PHONY: test
-test: ## Run all tests
-	$(UV) run pytest
+test: test-db ## Run all tests (starts Postgres for the control-plane suite)
+	JANUS_TEST_DATABASE_URL=$(TEST_DB_URL) $(UV) run pytest
 
 .PHONY: test-gateway
 test-gateway: ## Gateway tests only (no database needed)
@@ -132,6 +146,7 @@ web-typecheck: ## Type check the web app
 
 .PHONY: web-test
 web-test: ## Web app tests
+	@node -e "const [maj,min]=process.versions.node.split('.').map(Number); if (maj<20||(maj===20&&min<12)) { console.error('Node 20.12+ required (found '+process.version+'). Run: make node'); process.exit(1); }"
 	cd apps/web && npm test
 
 .PHONY: web-build

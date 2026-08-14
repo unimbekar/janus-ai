@@ -35,7 +35,7 @@ def api_key_lookup_hash(key: str) -> str:
 class ApiKeyAuthenticator:
     def __init__(self, db: GatewayDatabase) -> None:
         self._db = db
-        self._hasher = PasswordHasher(time_cost=2, memory_cost_kib=65536, parallelism=1)
+        self._hasher = PasswordHasher(time_cost=2, memory_cost=65536, parallelism=1)
 
     async def authenticate(self, key: str) -> ApiKeyIdentity:
         lookup = api_key_lookup_hash(key)

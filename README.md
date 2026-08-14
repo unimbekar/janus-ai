@@ -15,7 +15,7 @@ Website: <https://www.janus-intelligence.ai>
 
 ## Run it locally
 
-Needs Docker, and — for working outside containers — Python 3.12+ with [uv](https://docs.astral.sh/uv/) and Node 20.9+.
+Needs Docker, and — for working outside containers — Python 3.12+ with [uv](https://docs.astral.sh/uv/) and Node 20.12+ (22 matches CI). If the distro Node is older, `make node` installs 22 under `~/.local/node-v22` and Make uses it automatically.
 
 ```bash
 make env          # create .env from the example

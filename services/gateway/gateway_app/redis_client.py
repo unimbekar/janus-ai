@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from janus_core.logging import get_logger
+
+if TYPE_CHECKING:
+    from redis.asyncio.client import PubSub
 
 logger = get_logger(__name__)
 
@@ -44,7 +49,7 @@ class RedisClient:
         if self._client:
             await self._client.publish(channel, message)
 
-    async def subscribe(self, channel: str):
+    async def subscribe(self, channel: str) -> PubSub | None:
         if not self._client:
             return None
         pubsub = self._client.pubsub()

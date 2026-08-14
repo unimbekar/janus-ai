@@ -35,9 +35,9 @@ class BedrockBackend(ModelBackend):
     protocol = Protocol.NATIVE
 
     def __init__(self) -> None:
-        self._client = None
+        self._client: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 import boto3

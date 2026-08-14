@@ -81,6 +81,13 @@ disallow_untyped_calls = true
 module = ["opentelemetry.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# boto3 is imported lazily by the Bedrock adapter and is not a required
+# dependency of the gateway. The import-linter contract still confines it
+# to gateway_app.backends.
+module = ["boto3"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["services/gateway/tests", "services/api/tests", "packages"]
@@ -109,6 +116,10 @@ source_modules = [
 # Top-level distributions only: import-linter cannot name subpackages of
 # external packages, so "google" stands for google-genai and its relatives.
 forbidden_modules = ["openai", "anthropic", "google", "boto3", "botocore", "ollama"]
+# The Bedrock adapter is the allowed home for boto3. Without this exception,
+# every module that constructs BackendRegistry would fail the contract
+# transitively, which is the opposite of the rule.
+ignore_imports = ["gateway_app.backends.bedrock -> boto3"]
 
 [[tool.importlinter.contracts]]
 name = "Shared packages never depend on services"

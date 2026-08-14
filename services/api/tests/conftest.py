@@ -19,11 +19,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 TEST_DATABASE_URL = os.environ.get("JANUS_TEST_DATABASE_URL")
-
-pytestmark = pytest.mark.skipif(
-    not TEST_DATABASE_URL,
-    reason="set JANUS_TEST_DATABASE_URL (see make test-api)",
-)
+_SKIP_NO_DATABASE = "set JANUS_TEST_DATABASE_URL (see make test-api)"
 
 GATEWAY_TOKEN = "test-gateway-token"
 
@@ -37,7 +33,8 @@ def _app_database_url(owner_url: str) -> str:
 
 @pytest.fixture(scope="session")
 def owner_url() -> str:
-    assert TEST_DATABASE_URL
+    if not TEST_DATABASE_URL:
+        pytest.skip(_SKIP_NO_DATABASE)
     return TEST_DATABASE_URL
 
 
@@ -62,7 +59,7 @@ def settings(owner_url, tmp_path_factory):
     )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def migrated_database(owner_url, settings) -> Iterator[None]:
     """Apply migrations once, from a clean schema."""
     from alembic import command
@@ -81,7 +78,7 @@ def migrated_database(owner_url, settings) -> Iterator[None]:
 
 
 @pytest_asyncio.fixture
-async def db(settings) -> AsyncIterator[object]:
+async def db(settings, clean_tables) -> AsyncIterator[object]:
     from api_app.db import Database, create_engine
 
     database = Database(
@@ -96,7 +93,7 @@ async def db(settings) -> AsyncIterator[object]:
     await database.aclose()
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture
 async def clean_tables(settings, migrated_database) -> AsyncIterator[None]:
     """Truncate between tests, as the owner so RLS does not hide leftovers."""
     from sqlalchemy.ext.asyncio import create_async_engine
@@ -187,7 +184,7 @@ def gateway_stub():
 
 
 @pytest.fixture
-def client(settings, gateway_stub) -> Iterator[TestClient]:
+def client(settings, gateway_stub, clean_tables) -> Iterator[TestClient]:
     from api_app.main import create_app
 
     app = create_app(settings)
