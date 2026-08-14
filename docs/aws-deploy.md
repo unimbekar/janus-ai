@@ -21,6 +21,14 @@ temporary env vars) on the machine that runs Terraform.
 - Terraform ≥ 1.5
 - This repository checked out
 
+On the DGX host, install the CLI tools with the shared Python 3.12 venv:
+
+```bash
+venv                 # alias → dgx-ai-lab/.venv (Python 3.12)
+./install.sh --tools-only
+# puts terraform, aws, gh under ~/.local/bin
+```
+
 Aurora PostgreSQL 16 with the `vector` extension (pgvector) is required; the
 Terraform stack uses Aurora Serverless v2.
 

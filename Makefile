@@ -34,6 +34,10 @@ install: ## Install the Python workspace and web dependencies
 	$(UV) sync
 	cd apps/web && npm install
 
+.PHONY: bootstrap
+bootstrap: ## Install Terraform, AWS CLI, gh, Node 22, then workspace deps
+	./install.sh
+
 .PHONY: node
 node: ## Install Node 22 locally (needed when the distro Node is older than 20.12)
 	@mkdir -p "$(NODE22)"

@@ -21,6 +21,14 @@ Website: <https://www.janus-intelligence.ai>
 
 Needs Docker, and — for working outside containers — Python 3.12+ with [uv](https://docs.astral.sh/uv/) and Node 20.12+ (22 matches CI). If the distro Node is older, `make node` installs 22 under `~/.local/node-v22` and Make uses it automatically.
 
+On this DGX host, activate the shared Python 3.12 environment with your `venv` alias first (`dgx-ai-lab`), then bootstrap host tools:
+
+```bash
+venv                 # Python 3.12 from dgx-ai-lab
+./install.sh         # Terraform, AWS CLI, gh, Node 22, uv sync, npm
+# or: make bootstrap
+```
+
 ```bash
 make env          # create .env from the example
 make stack-up     # postgres, migrations, gateway, api, web
