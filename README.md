@@ -154,6 +154,8 @@ increment actually built, and [phase-3.md](docs/phase-3.md) for the gateway.
 | 11 | [roadmap.md](docs/roadmap.md) | Phases 1–10 with exit criteria |
 | — | [aws-deploy.md](docs/aws-deploy.md) | Apply Terraform to your AWS account |
 | — | [marketplace.md](docs/marketplace.md) | AWS Marketplace seller + listing prep |
+| — | [sales.md](docs/sales.md) | Who to sell to, packaging, demo, objections |
+| — | [air-gapped.md](docs/air-gapped.md) | Offline / air-gapped offer and delivery |
 | — | [phase-1.md](docs/phase-1.md) … [phase-10.md](docs/phase-10.md) | As-built notes |
 | — | [adr/](docs/adr/) | Architecture decision records |
 
