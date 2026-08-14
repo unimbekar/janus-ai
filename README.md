@@ -157,6 +157,7 @@ increment actually built, and [phase-3.md](docs/phase-3.md) for the gateway.
 | — | [sales.md](docs/sales.md) | Who to sell to, packaging, demo, objections |
 | — | [air-gapped.md](docs/air-gapped.md) | Offline / air-gapped offer and delivery |
 | — | [UI.md](docs/UI.md) | Product UI walkthrough for customer presentations |
+| — | [ui-mockups/](docs/ui-mockups/index.html) | Pixel-faithful HTML mockups (open in browser) |
 | — | [phase-1.md](docs/phase-1.md) … [phase-10.md](docs/phase-10.md) | As-built notes |
 | — | [adr/](docs/adr/) | Architecture decision records |
 

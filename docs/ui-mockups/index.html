@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Janus UI — product mockups</title>
+    <link rel="stylesheet" href="./janus.css" />
+    <link rel="stylesheet" href="./deck.css" />
+  </head>
+  <body class="deck">
+    <header class="deck-header">
+      <div class="deck-brand">
+        <span class="brand-mark">J</span>
+        <span>Janus Intelligence</span>
+      </div>
+      <span class="deck-meta">Pixel-faithful UI mockups · as-built product</span>
+      <nav class="deck-tabs" aria-label="Screens">
+        <a href="#sign-in" class="active">Sign in</a>
+        <a href="#chat">Chat</a>
+        <a href="#models">Models</a>
+        <a href="#model-detail">Model detail</a>
+        <a href="#knowledge">Knowledge</a>
+        <a href="#agents">Agents</a>
+        <a href="#usage">Usage</a>
+      </nav>
+    </header>
+
+    <main class="deck-main">
+      <!-- SIGN IN -->
+      <section class="slide" id="sign-in">
+        <div class="slide-label">
+          <h2>Sign in / Create workspace</h2>
+          <span class="route">/</span>
+          <p>First impression — register an org or return to an existing workspace.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/</div>
+          </div>
+          <div class="screen">
+            <div class="auth">
+              <form class="auth-card">
+                <div class="brand">
+                  <span class="brand-mark">J</span>
+                  <span>Janus Intelligence</span>
+                </div>
+                <h1>Create your workspace</h1>
+                <p class="subtitle">One account, every model — frontier cloud or private.</p>
+                <div class="field">
+                  <label>Your name</label>
+                  <input value="Alex Chen" readonly />
+                </div>
+                <div class="field">
+                  <label>Workspace name</label>
+                  <input value="Acme Corp" readonly />
+                </div>
+                <div class="field">
+                  <label>Work email</label>
+                  <input value="alex@acme.example" readonly />
+                </div>
+                <div class="field">
+                  <label>Password</label>
+                  <input type="password" value="••••••••••••" readonly />
+                  <span class="field-hint"
+                    >At least 12 characters. A passphrase is easier to remember and harder to
+                    guess.</span
+                  >
+                </div>
+                <div class="auth-actions">
+                  <button class="primary" type="button">Create workspace</button>
+                  <button type="button" class="switch">I already have an account</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>Create workspace</strong>
+            <span>Provisions user + organization; owner role; HttpOnly session cookie.</span>
+          </div>
+          <div class="action">
+            <strong>Sign in</strong>
+            <span>Resume org context — mode badge appears in the top bar after auth.</span>
+          </div>
+          <div class="action">
+            <strong>Switch mode</strong>
+            <span>Toggle between register and login on the same card.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAT -->
+      <section class="slide" id="chat">
+        <div class="slide-label">
+          <h2>Chat</h2>
+          <span class="route">/?c=cnv_…</span>
+          <p>Daily workspace — streaming answers with model attribution.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/?c=cnv_8f2a1c</div>
+          </div>
+          <div class="screen">
+            <div class="shell">
+              <header class="topbar">
+                <a class="brand" href="#chat"
+                  ><span class="brand-mark">J</span><span>Janus</span></a
+                >
+                <nav class="nav">
+                  <a href="#chat" class="active">Chat</a>
+                  <a href="#models">Models</a>
+                  <a href="#agents">Agents</a>
+                  <a href="#knowledge">Knowledge</a>
+                  <a href="#usage">Usage</a>
+                </nav>
+                <div class="topbar-spacer"></div>
+                <div class="topbar-meta">
+                  <span>Acme Corp</span>
+                  <span class="badge">auto mode</span>
+                  <button class="ghost" type="button">Sign out</button>
+                </div>
+              </header>
+              <div class="workspace">
+                <aside class="sidebar">
+                  <button class="primary sidebar-new" type="button">New chat</button>
+                  <ul class="thread-list">
+                    <li>
+                      <button class="thread active" type="button">
+                        Summarize this contract…
+                      </button>
+                    </li>
+                    <li>
+                      <button class="thread" type="button">Reconcile two CSV exports</button>
+                    </li>
+                    <li>
+                      <button class="thread" type="button">Customer follow-up email</button>
+                    </li>
+                  </ul>
+                </aside>
+                <div class="main">
+                  <div class="conversation">
+                    <div class="conversation-inner">
+                      <div class="message user">
+                        <span class="message-role">Alex Chen</span>
+                        <div class="message-body">
+                          Summarize this contract and flag unusual terms. Focus on liability,
+                          data residency, and termination.
+                        </div>
+                      </div>
+                      <div class="message assistant">
+                        <span class="message-role">Janus</span>
+                        <div class="attribution">
+                          <span class="badge">janus/mock-small</span>
+                          <span class="badge private">on this machine</span>
+                        </div>
+                        <div class="message-body">
+                          Here’s a concise read of the draft:
+
+                          1. Liability — Cap is 12× annual fees, which is high vs. peer SaaS
+                          (often 1–2×). Flag for negotiation.
+                          2. Data residency — Customer data may leave the US under “necessary
+                          subprocessors.” Ask for an explicit US-only schedule.
+                          3. Termination — 90-day notice for convenience; industry norms are
+                          30–60 days. Survival of confidentiality looks standard.
+
+                          I can draft redlines next if you want.
+                        </div>
+                        <span class="explanation"
+                          >Selected janus/mock-small because the org is in auto mode and this
+                          deployment is ready locally.</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                  <div class="composer">
+                    <div class="composer-inner">
+                      <div class="composer-row">
+                        <textarea placeholder="Ask Janus…" rows="1"></textarea>
+                        <button class="primary" type="button">Send</button>
+                      </div>
+                      <div class="composer-meta">
+                        <select>
+                          <option>Auto — let Janus choose</option>
+                          <option>Janus Mock Small</option>
+                          <option>Mock Reasoning</option>
+                        </select>
+                        <span>Enter to send · Shift+Enter for a new line</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>New chat / switch threads</strong>
+            <span>Conversations persist per organization; URL tracks the active thread.</span>
+          </div>
+          <div class="action">
+            <strong>Send / Stop</strong>
+            <span>Streams the assistant reply; Stop cancels the in-flight generation.</span>
+          </div>
+          <div class="action">
+            <strong>Auto or pin a model</strong>
+            <span>Same policy either way — attribution shows which model answered.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODELS -->
+      <section class="slide" id="models">
+        <div class="slide-label">
+          <h2>Models</h2>
+          <span class="route">/models</span>
+          <p>Catalog of everything this workspace is allowed to use.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/models</div>
+          </div>
+          <div class="screen">
+            <div class="shell">
+              <header class="topbar">
+                <a class="brand" href="#chat"
+                  ><span class="brand-mark">J</span><span>Janus</span></a
+                >
+                <nav class="nav">
+                  <a href="#chat">Chat</a>
+                  <a href="#models" class="active">Models</a>
+                  <a href="#agents">Agents</a>
+                  <a href="#knowledge">Knowledge</a>
+                  <a href="#usage">Usage</a>
+                </nav>
+                <div class="topbar-spacer"></div>
+                <div class="topbar-meta">
+                  <span>Acme Corp</span>
+                  <span class="badge">auto mode</span>
+                  <button class="ghost" type="button">Sign out</button>
+                </div>
+              </header>
+              <div class="page">
+                <div class="page-inner">
+                  <h1>Models</h1>
+                  <p class="lede">
+                    Everything this workspace is allowed to use. Auto picks from this list;
+                    pinning a model still goes through the same policy.
+                  </p>
+                  <div class="model-grid">
+                    <a class="model-card" href="#model-detail">
+                      <div class="model-card-head">
+                        <strong>Janus Mock Small</strong>
+                        <span class="badge">standard</span>
+                      </div>
+                      <code>janus/mock-small</code>
+                      <div class="attribution">
+                        <span class="badge">local</span>
+                        <span class="badge private">verified</span>
+                        <span class="badge">low</span>
+                      </div>
+                      <p class="model-caps">streaming · chat · tools</p>
+                    </a>
+                    <a class="model-card" href="#model-detail">
+                      <div class="model-card-head">
+                        <strong>Mock Reasoning</strong>
+                        <span class="badge">premium</span>
+                      </div>
+                      <code>janus/mock-reasoning</code>
+                      <div class="attribution">
+                        <span class="badge">local</span>
+                        <span class="badge private">verified</span>
+                        <span class="badge">medium</span>
+                      </div>
+                      <p class="model-caps">streaming · chat · reasoning</p>
+                    </a>
+                    <a class="model-card" href="#model-detail">
+                      <div class="model-card-head">
+                        <strong>Mock Embed</strong>
+                        <span class="badge">standard</span>
+                      </div>
+                      <code>janus/mock-embed</code>
+                      <div class="attribution">
+                        <span class="badge">local</span>
+                        <span class="badge private">verified</span>
+                        <span class="badge">low</span>
+                      </div>
+                      <p class="model-caps">embeddings</p>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>Browse cards</strong>
+            <span>Only models eligible under org mode and policy appear here.</span>
+          </div>
+          <div class="action">
+            <strong>Open a model</strong>
+            <span>Detail view with context, cost, deployments, and chat deep-link.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODEL DETAIL -->
+      <section class="slide" id="model-detail">
+        <div class="slide-label">
+          <h2>Model detail</h2>
+          <span class="route">/models/janus/mock-small</span>
+          <p>Transparency without exposing infrastructure endpoints.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/models/janus/mock-small</div>
+          </div>
+          <div class="screen">
+            <div class="shell">
+              <header class="topbar">
+                <a class="brand" href="#chat"
+                  ><span class="brand-mark">J</span><span>Janus</span></a
+                >
+                <nav class="nav">
+                  <a href="#chat">Chat</a>
+                  <a href="#models" class="active">Models</a>
+                  <a href="#agents">Agents</a>
+                  <a href="#knowledge">Knowledge</a>
+                  <a href="#usage">Usage</a>
+                </nav>
+                <div class="topbar-spacer"></div>
+                <div class="topbar-meta">
+                  <span>Acme Corp</span>
+                  <span class="badge">auto mode</span>
+                  <button class="ghost" type="button">Sign out</button>
+                </div>
+              </header>
+              <div class="page">
+                <div class="page-inner narrow">
+                  <a class="back" href="#models">← All models</a>
+                  <h1>Janus Mock Small</h1>
+                  <code class="slug">janus/mock-small</code>
+                  <div class="attribution">
+                    <span class="badge">standard</span>
+                    <span class="badge">local</span>
+                    <span class="badge">janus</span>
+                    <span class="badge private">verified</span>
+                  </div>
+                  <p class="lede">
+                    Fast local chat model for demos and CI. Routes through the Model Gateway
+                    like every other deployment.
+                  </p>
+                  <dl class="kv">
+                    <dt>Context</dt>
+                    <dd>8,192 tokens</dd>
+                    <dt>Max output</dt>
+                    <dd>2,048 tokens</dd>
+                    <dt>Cost class</dt>
+                    <dd>low</dd>
+                    <dt>Latency class</dt>
+                    <dd>fast</dd>
+                    <dt>Languages</dt>
+                    <dd>en</dd>
+                    <dt>Capabilities</dt>
+                    <dd>streaming, chat, tools</dd>
+                  </dl>
+                  <h2>Deployments</h2>
+                  <ul class="deploy-list">
+                    <li>
+                      <strong>mock-small-local</strong>
+                      <span class="badge">local</span>
+                      <span class="badge">ready</span>
+                      <span class="badge">cpu</span>
+                    </li>
+                  </ul>
+                  <a class="primary chat-link" href="#chat">Chat with this model</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>Inspect metadata</strong>
+            <span>Tier, privacy, cost, latency — never provider secrets or URLs.</span>
+          </div>
+          <div class="action">
+            <strong>Chat with this model</strong>
+            <span>Opens Chat with the model pre-selected via ?model=…</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- KNOWLEDGE -->
+      <section class="slide" id="knowledge">
+        <div class="slide-label">
+          <h2>Knowledge</h2>
+          <span class="route">/knowledge</span>
+          <p>Ingest text, embed via gateway, retrieve with scores.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/knowledge</div>
+          </div>
+          <div class="screen">
+            <div class="shell">
+              <header class="topbar">
+                <a class="brand" href="#chat"
+                  ><span class="brand-mark">J</span><span>Janus</span></a
+                >
+                <nav class="nav">
+                  <a href="#chat">Chat</a>
+                  <a href="#models">Models</a>
+                  <a href="#agents">Agents</a>
+                  <a href="#knowledge" class="active">Knowledge</a>
+                  <a href="#usage">Usage</a>
+                </nav>
+                <div class="topbar-spacer"></div>
+                <div class="topbar-meta">
+                  <span>Acme Corp</span>
+                  <span class="badge">auto mode</span>
+                  <button class="ghost" type="button">Sign out</button>
+                </div>
+              </header>
+              <div class="page">
+                <div class="page-inner">
+                  <h1>Knowledge</h1>
+                  <p class="lede">
+                    Upload text, embed through the gateway, retrieve with pgvector. Answers
+                    that use this store can cite the chunks they relied on.
+                  </p>
+                  <div class="stack-grid">
+                    <div class="panel">
+                      <h2>New knowledge base</h2>
+                      <div class="field">
+                        <label>Name</label>
+                        <input value="Company handbook" readonly />
+                      </div>
+                      <button class="primary" type="button">Create</button>
+                      <ul class="item-list">
+                        <li>
+                          <button class="item active" type="button">
+                            <strong>Company handbook</strong>
+                            <span class="badge">1 docs</span>
+                            <code>janus/mock-embed</code>
+                          </button>
+                        </li>
+                        <li>
+                          <button class="item" type="button">
+                            <strong>Support playbook</strong>
+                            <span class="badge">3 docs</span>
+                            <code>janus/mock-embed</code>
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                    <div class="panel">
+                      <h2>Ingest text</h2>
+                      <div class="field">
+                        <label>Title</label>
+                        <input value="Overview" readonly />
+                      </div>
+                      <div class="field">
+                        <label>Content</label>
+                        <textarea rows="4" readonly>
+Janus routes every model call through the gateway.
+
+Agents never talk to providers directly.</textarea
+                        >
+                      </div>
+                      <button class="primary" type="button">Ingest</button>
+                      <h2>Search</h2>
+                      <div class="field">
+                        <label>Query</label>
+                        <input value="gateway" readonly />
+                      </div>
+                      <button class="primary" type="button">Search</button>
+                      <ul class="cite-list">
+                        <li>
+                          <span class="badge">0.912</span> Janus routes every model call
+                          through the gateway.
+                        </li>
+                        <li>
+                          <span class="badge">0.744</span> Agents never talk to providers
+                          directly.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>Create knowledge base</strong>
+            <span>Named store with embedding model pinned (default mock-embed).</span>
+          </div>
+          <div class="action">
+            <strong>Ingest text</strong>
+            <span>Chunk → embed via gateway → pgvector. Duplicates rejected.</span>
+          </div>
+          <div class="action">
+            <strong>Search</strong>
+            <span>Ranked chunks with similarity scores for grounding and citations.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- AGENTS -->
+      <section class="slide" id="agents">
+        <div class="slide-label">
+          <h2>Agents</h2>
+          <span class="route">/agents</span>
+          <p>Versioned agents with tools and knowledge — every model call via gateway.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/agents</div>
+          </div>
+          <div class="screen">
+            <div class="shell">
+              <header class="topbar">
+                <a class="brand" href="#chat"
+                  ><span class="brand-mark">J</span><span>Janus</span></a
+                >
+                <nav class="nav">
+                  <a href="#chat">Chat</a>
+                  <a href="#models">Models</a>
+                  <a href="#agents" class="active">Agents</a>
+                  <a href="#knowledge">Knowledge</a>
+                  <a href="#usage">Usage</a>
+                </nav>
+                <div class="topbar-spacer"></div>
+                <div class="topbar-meta">
+                  <span>Acme Corp</span>
+                  <span class="badge">auto mode</span>
+                  <button class="ghost" type="button">Sign out</button>
+                </div>
+              </header>
+              <div class="page">
+                <div class="page-inner">
+                  <h1>Agents</h1>
+                  <p class="lede">
+                    Versioned agents with tools and knowledge. Model calls always go through
+                    the gateway — never a provider SDK.
+                  </p>
+                  <div class="stack-grid">
+                    <div class="panel">
+                      <h2>Create</h2>
+                      <div class="field">
+                        <label>Name</label>
+                        <input value="Research assistant" readonly />
+                      </div>
+                      <div class="field">
+                        <label>Slug</label>
+                        <input value="research-assistant" readonly />
+                      </div>
+                      <div class="field">
+                        <label>Instructions</label>
+                        <textarea rows="3" readonly>
+Use retrieved context when provided. Never invent citations.</textarea
+                        >
+                      </div>
+                      <div class="field">
+                        <label>Knowledge base</label>
+                        <select>
+                          <option>Company handbook</option>
+                        </select>
+                      </div>
+                      <button class="primary" type="button">Create draft</button>
+                    </div>
+                    <div class="panel">
+                      <h2>Your agents</h2>
+                      <ul class="item-list">
+                        <li>
+                          <button class="item active" type="button">
+                            <strong>Research assistant</strong>
+                            <span class="badge">published</span>
+                            <code>research-assistant</code>
+                          </button>
+                        </li>
+                        <li>
+                          <button class="item" type="button">
+                            <strong>Support bot</strong>
+                            <span class="badge">draft</span>
+                            <code>support-bot</code>
+                          </button>
+                        </li>
+                      </ul>
+                      <div class="row-actions">
+                        <button class="primary" type="button">Publish</button>
+                      </div>
+                      <div class="field">
+                        <label>Run input</label>
+                        <textarea rows="2" readonly>
+When does the office open?</textarea
+                        >
+                      </div>
+                      <button class="primary" type="button">Run</button>
+                      <div class="result">
+                        <div class="attribution">
+                          <span class="badge">completed</span>
+                          <span class="badge">2 steps</span>
+                        </div>
+                        <pre>
+The handbook says the office opens at 09:00 UTC on weekdays.</pre
+                        >
+                        <ul class="cite-list">
+                          <li>
+                            opens at 09:00 UTC on weekdays
+                            <span class="muted"> · 0.887</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>Create draft</strong>
+            <span>Versioned agent; optional KB + tools (knowledge_search, clock).</span>
+          </div>
+          <div class="action">
+            <strong>Publish</strong>
+            <span>Marks the version published for governed use.</span>
+          </div>
+          <div class="action">
+            <strong>Run</strong>
+            <span>Shows status, steps, answer, and citations from knowledge.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- USAGE -->
+      <section class="slide" id="usage">
+        <div class="slide-label">
+          <h2>Usage &amp; deployments</h2>
+          <span class="route">/usage</span>
+          <p>Org totals and deployment health — no credentials or endpoints.</p>
+        </div>
+        <div class="browser">
+          <div class="browser-bar">
+            <div class="browser-dots"><span></span><span></span><span></span></div>
+            <div class="browser-url">https://app.janus.example/usage</div>
+          </div>
+          <div class="screen">
+            <div class="shell">
+              <header class="topbar">
+                <a class="brand" href="#chat"
+                  ><span class="brand-mark">J</span><span>Janus</span></a
+                >
+                <nav class="nav">
+                  <a href="#chat">Chat</a>
+                  <a href="#models">Models</a>
+                  <a href="#agents">Agents</a>
+                  <a href="#knowledge">Knowledge</a>
+                  <a href="#usage" class="active">Usage</a>
+                </nav>
+                <div class="topbar-spacer"></div>
+                <div class="topbar-meta">
+                  <span>Acme Corp</span>
+                  <span class="badge">auto mode</span>
+                  <button class="ghost" type="button">Sign out</button>
+                </div>
+              </header>
+              <div class="page">
+                <div class="page-inner">
+                  <h1>Usage &amp; deployments</h1>
+                  <p class="lede">
+                    Organization totals from telemetry, and the deployments this workspace can
+                    see — without endpoints or credentials.
+                  </p>
+                  <div class="stat-grid">
+                    <div class="stat">
+                      <span class="muted">Requests</span>
+                      <strong>128</strong>
+                    </div>
+                    <div class="stat">
+                      <span class="muted">Input tokens</span>
+                      <strong>42,180</strong>
+                    </div>
+                    <div class="stat">
+                      <span class="muted">Output tokens</span>
+                      <strong>19,442</strong>
+                    </div>
+                    <div class="stat">
+                      <span class="muted">Cost (USD)</span>
+                      <strong>0.00</strong>
+                    </div>
+                  </div>
+                  <h2>Deployments</h2>
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Model</th>
+                        <th>Key</th>
+                        <th>Privacy</th>
+                        <th>Availability</th>
+                        <th>Accelerator</th>
+                        <th>Region</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>janus/mock-small</td>
+                        <td>mock-small-local</td>
+                        <td><span class="badge">local</span></td>
+                        <td><span class="badge private">ready</span></td>
+                        <td>cpu</td>
+                        <td>—</td>
+                      </tr>
+                      <tr>
+                        <td>janus/mock-reasoning</td>
+                        <td>mock-reasoning-local</td>
+                        <td><span class="badge">local</span></td>
+                        <td><span class="badge private">ready</span></td>
+                        <td>cpu</td>
+                        <td>—</td>
+                      </tr>
+                      <tr>
+                        <td>janus/mock-embed</td>
+                        <td>mock-embed-local</td>
+                        <td><span class="badge">local</span></td>
+                        <td><span class="badge private">ready</span></td>
+                        <td>cpu</td>
+                        <td>—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="action">
+            <strong>View usage</strong>
+            <span>Requests, tokens, and cost from org telemetry.</span>
+          </div>
+          <div class="action">
+            <strong>View deployments</strong>
+            <span>Privacy, availability, accelerator — never secrets or endpoints.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="deck-footer">
+      Styles mirrored from <code>apps/web/src/app/globals.css</code>. For the live product, run
+      <code>make stack-up</code> and open the printed web URL. Narrative copy:
+      <a href="../UI.md">UI.md</a> · <a href="../sales.md">sales.md</a>.
+    </footer>
+
+    <script>
+      const tabs = document.querySelectorAll(".deck-tabs a");
+      const sections = [...document.querySelectorAll(".slide")];
+      function setActive() {
+        const y = window.scrollY + 96;
+        let current = sections[0]?.id;
+        for (const s of sections) {
+          if (s.offsetTop <= y) current = s.id;
+        }
+        tabs.forEach((a) => {
+          a.classList.toggle("active", a.getAttribute("href") === "#" + current);
+        });
+      }
+      window.addEventListener("scroll", setActive, { passive: true });
+      setActive();
+    </script>
+  </body>
+</html>

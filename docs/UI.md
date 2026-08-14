@@ -3,9 +3,15 @@
 **Status:** as-built product UI · **Last updated:** 2026-08-14  
 **Live demo:** local `http://localhost:3010` (or the port `make stack-up` prints)
 
-This document is a **slide-friendly walkthrough** of what a user sees and can do today. Layouts are wireframes of the real Next.js app (`apps/web`), not mockups of a future redesign.
+## Visual mockups (open these for the deck)
 
-Related: [sales.md](./sales.md) · [architecture.md](./architecture.md) · [api.md](./api.md)
+**[ui-mockups/index.html](./ui-mockups/index.html)** — browser-framed screens that reuse the real product CSS (`globals.css`) and the same layout/classes as `apps/web`. Open the file in Chrome/Firefox for a sales walkthrough; sticky tabs jump Sign in → Chat → Models → Detail → Knowledge → Agents → Usage.
+
+```bash
+xdg-open docs/ui-mockups/index.html
+```
+
+Related: [sales.md](./sales.md) · [architecture.md](./architecture.md) · [api.md](./api.md) · [ui-mockups/README.md](./ui-mockups/README.md)
 
 ---
 
@@ -22,12 +28,6 @@ Five primary places after sign-in, always reachable from the top bar:
 | **Usage** | `/usage` | Token/cost totals + deployment health |
 
 Top-right always shows: **organization name**, **execution mode badge** (e.g. `auto mode`), **Sign out**.
-
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│  [J] Janus     Chat   Models   Agents   Knowledge   Usage      Acme · auto mode · Sign out │
-└──────────────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -46,21 +46,7 @@ Use this order with a prospect:
 
 ## 3. Sign in / register
 
-**Route:** any protected page when logged out  
-
-```text
-┌─────────────────────────────┐
-│         [J] Janus           │
-│                             │
-│   Sign in  |  Create workspace │
-│                             │
-│   Email                     │
-│   Password (12+ chars)      │
-│   [Name / Org — register]   │
-│                             │
-│   [ Continue ]              │
-└─────────────────────────────┘
-```
+**Route:** any protected page when logged out · **Mockup:** [Sign in](./ui-mockups/index.html#sign-in)
 
 ### Actions
 
@@ -76,31 +62,7 @@ Use this order with a prospect:
 
 ## 4. Chat
 
-**Route:** `/` · optional `?c=<conversation_id>` · optional `?model=<slug>`
-
-```text
-┌─ top bar ──────────────────────────────────────────────────────────────┐
-│ Janus · Chat · …                                          Org · mode   │
-├────────────┬───────────────────────────────────────────────────────────┤
-│ New chat   │                                                           │
-│            │   Empty state: headline + suggestion chips                │
-│ Yesterday  │                                                           │
-│  · Thread  │   You                                                     │
-│  · Thread  │   ┌─────────────────────────────────────────────┐         │
-│            │   │ Summarize this contract…                    │         │
-│            │   └─────────────────────────────────────────────┘         │
-│            │                                                           │
-│            │   Assistant                                               │
-│            │   [janus/mock-small] [local]  “Selected … because …”      │
-│            │   Streaming answer… █                                     │
-│            │                                                           │
-│            ├───────────────────────────────────────────────────────────┤
-│            │  Model [ Auto ▾ ]     [ Stop ]                            │
-│            │  ┌─────────────────────────────────────────┐  [ Send ]    │
-│            │  │ Message…                                │              │
-│            │  └─────────────────────────────────────────┘              │
-└────────────┴───────────────────────────────────────────────────────────┘
-```
+**Route:** `/` · optional `?c=<conversation_id>` · optional `?model=<slug>` · **Mockup:** [Chat](./ui-mockups/index.html#chat)
 
 ### Actions
 
@@ -125,20 +87,7 @@ Use this order with a prospect:
 
 ## 5. Models (catalog)
 
-**Route:** `/models`
-
-```text
-┌─ Models ───────────────────────────────────────────────────────────────┐
-│  Everything this workspace is allowed to use.                          │
-│                                                                        │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐      │
-│  │ Janus Mock Small │  │ Mock Reasoning   │  │ Mock Embed       │      │
-│  │ janus/mock-small │  │ …                │  │ …                │      │
-│  │ [local] [verified] [cost]              │                      │      │
-│  │ streaming · …    │  │                  │  │                  │      │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘      │
-└────────────────────────────────────────────────────────────────────────┘
-```
+**Route:** `/models` · **Mockup:** [Models](./ui-mockups/index.html#models)
 
 ### Actions
 
@@ -151,23 +100,7 @@ Use this order with a prospect:
 
 ## 6. Model detail
 
-**Route:** `/models/[...id]` e.g. `/models/janus/mock-small`
-
-```text
-┌─ ← All models ─────────────────────────────────────────────────────────┐
-│  Janus Mock Small                                                      │
-│  janus/mock-small                                                      │
-│  [tier] [privacy] [provider] [verified]                                │
-│                                                                        │
-│  Context ……    Max output ……    Cost ……    Latency ……                  │
-│  Languages ……  Capabilities ……                                         │
-│                                                                        │
-│  Deployments                                                           │
-│  · mock-small-local   [local] [ready] [cpu]                            │
-│                                                                        │
-│  [ Chat with this model ]                                              │
-└────────────────────────────────────────────────────────────────────────┘
-```
+**Route:** `/models/[...id]` e.g. `/models/janus/mock-small` · **Mockup:** [Model detail](./ui-mockups/index.html#model-detail)
 
 ### Actions
 
@@ -183,21 +116,7 @@ Use this order with a prospect:
 
 ## 7. Knowledge
 
-**Route:** `/knowledge`
-
-```text
-┌─ Knowledge ──────────────────────────────┬─ Ingest / Search ───────────┐
-│  New knowledge base                      │  Title                      │
-│  Name [ Company handbook    ]            │  Content (textarea)         │
-│  [ Create ]                              │  [ Ingest ]                 │
-│                                          │                             │
-│  · Company handbook   [1 docs]           │  Query [ gateway     ]      │
-│    janus/mock-embed                      │  [ Search ]                 │
-│                                          │                             │
-│                                          │  [0.91] Every model call…   │
-│                                          │  [0.72] Agents never…       │
-└──────────────────────────────────────────┴─────────────────────────────┘
-```
+**Route:** `/knowledge` · **Mockup:** [Knowledge](./ui-mockups/index.html#knowledge)
 
 ### Actions
 
@@ -217,26 +136,7 @@ Use this order with a prospect:
 
 ## 8. Agents
 
-**Route:** `/agents`
-
-```text
-┌─ Create ─────────────────────┬─ Your agents / Run ─────────────────────┐
-│  Name                        │  · Research assistant  [draft]          │
-│  Slug                        │  · Support bot         [published]      │
-│  Instructions                │                                         │
-│  Knowledge base [ ▾ ]        │  [ Publish ]                            │
-│  [ Create draft ]            │                                         │
-│                              │  Run input                              │
-│                              │  ┌─────────────────────────────┐        │
-│                              │  │ When does the office open?  │        │
-│                              │  └─────────────────────────────┘        │
-│                              │  [ Run ]                                │
-│                              │                                         │
-│                              │  [completed] [2 steps]                  │
-│                              │  Answer text…                           │
-│                              │  Citations: “opens at 09:00 UTC…”       │
-└──────────────────────────────┴─────────────────────────────────────────┘
-```
+**Route:** `/agents` · **Mockup:** [Agents](./ui-mockups/index.html#agents)
 
 ### Actions
 
@@ -256,21 +156,7 @@ Use this order with a prospect:
 
 ## 9. Usage & deployments
 
-**Route:** `/usage`
-
-```text
-┌─ Usage & deployments ──────────────────────────────────────────────────┐
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                       │
-│  │ Requests│ │ In toks │ │ Out toks│ │ Cost USD│                       │
-│  │   11    │ │   …     │ │   …     │ │  0.00   │                       │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘                       │
-│                                                                        │
-│  Deployments                                                           │
-│  Model              Key                 Privacy  Availability  Accel   │
-│  janus/mock-small   mock-small-local    local    ready         cpu     │
-│  …                                                                     │
-└────────────────────────────────────────────────────────────────────────┘
-```
+**Route:** `/usage` · **Mockup:** [Usage](./ui-mockups/index.html#usage)
 
 ### Actions
 
@@ -329,7 +215,13 @@ flowchart TB
 | Trust cues | Mode badge, privacy badges, verified metadata, routing explanation |
 | What you never show | Provider keys, internal URLs, chain-of-thought |
 
-Screenshot tips for Marketplace / sales decks: register → one Auto chat with attribution visible → model card → knowledge search hit → agent run with citation → usage table.
+**Preferred screenshots:** use [ui-mockups/index.html](./ui-mockups/index.html) (same CSS as production) or the live stack. Deck order: register → Auto chat with attribution → model card → knowledge search → agent run with citation → usage table.
+
+When product CSS changes, refresh the mockup stylesheet:
+
+```bash
+cp apps/web/src/app/globals.css docs/ui-mockups/janus.css
+```
 
 ---
 
