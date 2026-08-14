@@ -156,6 +156,7 @@ increment actually built, and [phase-3.md](docs/phase-3.md) for the gateway.
 | — | [marketplace.md](docs/marketplace.md) | AWS Marketplace seller + listing prep |
 | — | [sales.md](docs/sales.md) | Who to sell to, packaging, demo, objections |
 | — | [air-gapped.md](docs/air-gapped.md) | Offline / air-gapped offer and delivery |
+| — | [UI.md](docs/UI.md) | Product UI walkthrough for customer presentations |
 | — | [phase-1.md](docs/phase-1.md) … [phase-10.md](docs/phase-10.md) | As-built notes |
 | — | [adr/](docs/adr/) | Architecture decision records |
 

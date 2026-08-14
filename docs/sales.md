@@ -3,7 +3,7 @@
 **Status:** sales playbook · **Last updated:** 2026-08-14  
 **Audience:** founders / GTM · not a legal contract
 
-Related: [marketplace.md](./marketplace.md) · [aws-deploy.md](./aws-deploy.md) · [architecture.md](./architecture.md) · [air-gapped.md](./air-gapped.md) · [security.md](./security.md)
+Related: [marketplace.md](./marketplace.md) · [aws-deploy.md](./aws-deploy.md) · [architecture.md](./architecture.md) · [air-gapped.md](./air-gapped.md) · [UI.md](./UI.md) · [security.md](./security.md)
 
 ---
 
