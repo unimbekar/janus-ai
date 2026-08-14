@@ -20,9 +20,10 @@ Needs Docker, and — for working outside containers — Python 3.12+ with [uv](
 ```bash
 make env          # create .env from the example
 make stack-up     # postgres, migrations, gateway, api, web
+make smoke-chat   # log in, create a conversation, stream a mock reply
 ```
 
-Open <http://localhost:3000>, create a workspace, and send a message. Out of the box it answers from a deterministic mock model, so the whole path is verifiable with no API key and no GPU.
+Open the web URL `make stack-up` prints (port 3000 unless `.env` overrides it), create a workspace, and send a message. Out of the box it answers from a deterministic mock model, so the whole path is verifiable with no API key and no GPU.
 
 If ports 3000, 8080, 8081, or 5432 are already taken, override them — nothing inside the stack depends on the published numbers:
 

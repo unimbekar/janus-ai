@@ -57,3 +57,4 @@ deploy/kubernetes/**/rendered/
 Thumbs.db
 .idea/
 .vscode/
+cookies.txt

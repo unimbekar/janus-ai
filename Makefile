@@ -5,6 +5,16 @@ UV ?= uv
 COMPOSE ?= docker compose
 API_DIR := services/api
 TEST_DB_URL ?= postgresql+asyncpg://janus:janus@localhost:5432/janus_test
+# Compose reads .env; Make does not. Load only the published-port keys so
+# `make stack-up` prints the ports that are actually bound.
+ifneq ($(wildcard .env),)
+JANUS_API_PORT ?= $(shell awk -F= '/^JANUS_API_PORT=/{print $$2}' .env)
+JANUS_WEB_PORT ?= $(shell awk -F= '/^JANUS_WEB_PORT=/{print $$2}' .env)
+JANUS_GATEWAY_PORT ?= $(shell awk -F= '/^JANUS_GATEWAY_PORT=/{print $$2}' .env)
+endif
+JANUS_API_PORT ?= 8080
+JANUS_WEB_PORT ?= 3000
+JANUS_GATEWAY_PORT ?= 8081
 # Next 16 and Vitest 4 need Node 20.12+ (`styleText` in node:util). CI uses 22.
 # Prefer a user-local install when the distro Node is too old.
 NODE22 := $(HOME)/.local/node-v22
@@ -56,8 +66,8 @@ db-reset: ## Destroy and recreate the database volume
 .PHONY: stack-up
 stack-up: ## Start everything in containers (postgres, migrations, gateway, api, web)
 	$(COMPOSE) --profile full up -d --build
-	@echo "web  http://localhost:$${JANUS_WEB_PORT:-3000}"
-	@echo "api  http://localhost:$${JANUS_API_PORT:-8080}"
+	@echo "web  http://localhost:$(JANUS_WEB_PORT)"
+	@echo "api  http://localhost:$(JANUS_API_PORT)"
 
 .PHONY: stack-down
 stack-down: ## Stop the full container stack
@@ -85,12 +95,16 @@ run-gateway: ## Run the Model Gateway on :8081
 		--app-dir services/gateway
 
 .PHONY: run-api
-run-api: ## Run the control plane on :8080
-	cd $(API_DIR) && $(UV) run uvicorn api_app.main:app --reload --port 8080
+run-api: ## Run the control plane
+	cd $(API_DIR) && $(UV) run uvicorn api_app.main:app --reload --port $(JANUS_API_PORT)
 
 .PHONY: run-web
-run-web: ## Run the web app on :3000
-	cd apps/web && npm run dev
+run-web: ## Run the web app
+	cd apps/web && npm run dev -- --port $(JANUS_WEB_PORT)
+
+.PHONY: smoke-chat
+smoke-chat: ## Log in, create a conversation, stream one reply
+	$(UV) run python scripts/smoke_chat.py
 
 # ------------------------------------------------------------------- tests
 

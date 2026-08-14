@@ -22,7 +22,7 @@ only path to a model. What is new is the **`chat` schema** in Postgres and the
 flowchart TB
     Browser["Browser<br/>session cookie"]
 
-    subgraph web["web · Next.js · :3000"]
+    subgraph web["web · Next.js 16 · :3000"]
         Shell["chat UI<br/>model picker · attribution"]
         Proxy["/api/* proxy"]
     end
@@ -74,7 +74,15 @@ flowchart TB
     style DB fill:#f0fdf4,stroke:#4ade80,color:#14532d
 ```
 
-**185 automated tests** pass (103 control plane · 82 gateway). Phase 1 had 132.
+Ports in the diagram are **container** ports. What the host publishes is `JANUS_WEB_PORT`,
+`JANUS_API_PORT`, and `JANUS_GATEWAY_PORT` from `.env` — `make stack-up` prints the
+ones that are actually bound. On a machine where 8080 is already taken, curling
+`localhost:8080` hits whatever owns that port (often another uvicorn app) and
+returns `Method Not Allowed`, not a Janus error.
+
+**187 automated tests** pass (103 control plane · 84 gateway). Eight more gateway
+conformance tests skip unless a live Ollama is opted in with `JANUS_TEST_OLLAMA=1`.
+Phase 1 had 132.
 
 ---
 
@@ -280,35 +288,55 @@ flowchart TB
 | Domain logic | `services/api/api_app/conversations.py` |
 | Attachments | `services/api/api_app/routers/attachments.py`, `storage.py` |
 | Cancellation | `services/api/api_app/cancellation.py` |
+| Smoke | `scripts/smoke_chat.py` (`make smoke-chat`) |
 | Tests | `services/api/tests/test_conversations.py`, `test_attachments.py`, `test_sse.py` |
 
 ---
 
 ## 7. Verifying it yourself
 
-On this machine ports 3000/8080 are taken, so the stack publishes API **8090** and
-web **3010** (see `.env`). The default in the examples is 8080.
+```bash
+make stack-up          # prints the bound web and API URLs from .env
+make smoke-chat        # login or register, create a conversation, stream a reply
+make test-api          # 103 tests, needs Postgres
+make test-gateway      # 84 tests; Ollama conformance stays skipped
+```
+
+`make smoke-chat` is the path that is supposed to work. It reads `JANUS_API_PORT`
+from `.env`, logs in if `you@example.com` already exists (register only succeeds
+once), creates a conversation, streams `Hello` through the mock backend, and
+reloads the transcript to show attribution survived.
+
+Do not copy a port from this document. Use the API URL `make stack-up` printed.
+If 8080 is already taken on the machine, curling it hits the other service and
+returns `Method Not Allowed`, not a Janus error.
+
+Hand-rolled curl has to do three things the old examples got wrong: **login** (not
+register, once the email exists), **write** the cookie with `-c` then **send** it
+with `-b`, and use the **id the create call returns** — never the placeholder
+`cnv_…`.
 
 ```bash
-make stack-up
-make test-api          # needs Postgres
-make test-gateway
-
+set -a && source .env && set +a
 API="localhost:${JANUS_API_PORT:-8080}"
 
-# Sign in (or register) so curl has a session cookie:
-curl -s -c cookies.txt -X POST "$API/v1/auth/register" \
+curl -s -c cookies.txt -X POST "$API/v1/auth/login" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"correct-horse-battery","name":"You","organization_name":"Acme"}'
+  -d '{"email":"you@example.com","password":"correct-horse-battery"}'
 
-curl -s -b cookies.txt -X POST "$API/v1/conversations" \
-  -H 'Content-Type: application/json' -d '{}'
-curl -s -N -b cookies.txt -X POST "$API/v1/conversations/cnv_…/messages" \
+CNV=$(curl -s -b cookies.txt -X POST "$API/v1/conversations" \
+  -H 'Content-Type: application/json' -d '{}' \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); assert "id" in d, d; print(d["id"])')
+
+curl -s -N -b cookies.txt -X POST "$API/v1/conversations/$CNV/messages" \
   -H 'Content-Type: application/json' -d '{"content":"Hello"}'
+
+curl -s -b cookies.txt "$API/v1/conversations/$CNV"
 ```
 
-Reload the conversation — history and model attribution survive:
+A `KeyError: 'id'` on that `CNV=$(...)` line means the create call did not return a
+conversation — usually a 401 because `cookies.txt` is empty, or a 405 because the
+request went to the wrong port. Print the body instead of assuming `id` is there.
 
-```bash
-curl -s -b cookies.txt "$API/v1/conversations/cnv_…"
-```
+The web UI still talks to stateless `/v1/chat`. Persisted history is on the
+conversations API; wiring the UI to it is Phase 3.
