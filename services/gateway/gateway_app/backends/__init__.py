@@ -9,10 +9,15 @@ from __future__ import annotations
 import httpx
 from janus_core.errors import JanusError
 
+from gateway_app.backends.anthropic import AnthropicBackend
 from gateway_app.backends.base import CallContext, HealthReport, ModelBackend
+from gateway_app.backends.bedrock import BedrockBackend
+from gateway_app.backends.gemini import GeminiBackend
 from gateway_app.backends.mock import MockBackend
 from gateway_app.backends.ollama import OllamaBackend
+from gateway_app.backends.openai import OpenAIBackend
 from gateway_app.backends.openai_compatible import OpenAICompatibleBackend
+from gateway_app.backends.sarvam import SarvamBackend
 
 __all__ = [
     "BackendRegistry",
@@ -44,10 +49,12 @@ class BackendRegistry:
         self._backends: dict[str, ModelBackend] = {
             "mock": MockBackend(),
             "ollama": OllamaBackend(self._client),
-            # vLLM and SGLang speak the same protocol; they are registered in
-            # Phase 8 when Janus GPU serving lands, with their own adapters for
-            # runtime-specific health and warming behavior.
             "openai_compatible": OpenAICompatibleBackend(self._client),
+            "openai": OpenAIBackend(self._client),
+            "anthropic": AnthropicBackend(self._client),
+            "gemini": GeminiBackend(self._client),
+            "sarvam": SarvamBackend(self._client),
+            "bedrock": BedrockBackend(),
         }
 
     def get(self, backend_id: str) -> ModelBackend:

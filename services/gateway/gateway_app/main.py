@@ -16,13 +16,18 @@ from janus_core.logging import bind_organization_id, bind_request_id, configure_
 from janus_core.telemetry import instrument_app, setup_telemetry
 
 from gateway_app import __version__
+from gateway_app.auth import ApiKeyAuthenticator
 from gateway_app.backends import BackendRegistry
+from gateway_app.db import GatewayDatabase, create_engine
 from gateway_app.execution import Executor
 from gateway_app.health import HealthTracker, health_probe_loop, probe_once
+from gateway_app.rate_limit import RateLimiter
+from gateway_app.redis_client import RedisClient
 from gateway_app.registry.service import RegistryService
 from gateway_app.router.resolver import ModelResolver
-from gateway_app.routers import chat, meta, models
+from gateway_app.routers import chat, embeddings, meta, models
 from gateway_app.settings import GatewaySettings, get_settings
+from gateway_app.telemetry.writer import TelemetryWriter
 
 logger = get_logger(__name__)
 
@@ -41,10 +46,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.health = HealthTracker(failure_threshold=settings.unhealthy_failure_threshold)
     app.state.health.seed(app.state.registry_service.current)
     app.state.resolver = ModelResolver(app.state.health)
+    app.state.redis = RedisClient(settings.redis_url or None)
+    app.state.rate_limiter = RateLimiter(
+        app.state.redis, limit_per_minute=settings.rate_limit_per_minute
+    )
+
+    db: GatewayDatabase | None = None
+    telemetry = TelemetryWriter(None)
+    if settings.database_url:
+        db = GatewayDatabase(create_engine(settings.database_url))
+        app.state.gateway_db = db
+        telemetry = TelemetryWriter(db)
+        app.state.api_key_auth = ApiKeyAuthenticator(db)
+    else:
+        app.state.gateway_db = None
+        app.state.api_key_auth = None
+
     app.state.executor = Executor(
         app.state.backends,
         app.state.health,
         max_attempts=settings.max_fallback_attempts,
+        telemetry=telemetry,
     )
 
     probe_task: asyncio.Task[None] | None = None
@@ -79,6 +101,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             with contextlib.suppress(asyncio.CancelledError):
                 await probe_task
         await app.state.backends.aclose()
+        if getattr(app.state, "gateway_db", None) is not None:
+            await app.state.gateway_db.aclose()
+        await app.state.redis.aclose()
         logger.info("gateway_stopped")
 
 
@@ -149,6 +174,7 @@ def create_app(settings: GatewaySettings | None = None) -> FastAPI:
     app.include_router(meta.router)
     app.include_router(models.router)
     app.include_router(chat.router)
+    app.include_router(embeddings.router)
 
     instrument_app(app)
     return app

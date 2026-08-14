@@ -8,8 +8,8 @@ Multilingual capability — including strong Indic-language support through Sarv
 
 Website: <https://www.janus-intelligence.ai>
 
-> **Status: Phase 1 — Foundation, complete.**
-> The design set in [`docs/`](docs/) is the specification; the code implements Phase 1 of it. A message now travels browser → control plane → gateway → model, and comes back attributed to the model that answered. [Phase 2](docs/roadmap.md#phase-2--chat) adds persisted conversations and the first frontier cloud adapter.
+> **Status: Phase 2 — Chat, complete. Phase 3 — Model Gateway, in progress.**
+> The design set in [`docs/`](docs/) is the specification. Phase 2 added persisted conversations; Phase 3 makes the gateway a public product surface. See [phase-2.md](docs/phase-2.md) and [roadmap.md](docs/roadmap.md#phase-3--model-gateway).
 
 ---
 
@@ -123,6 +123,7 @@ The rest is the specification, read in this order.
 | 11 | [roadmap.md](docs/roadmap.md) | Phases 1–10 with exit criteria |
 | — | [repository-structure.md](docs/repository-structure.md) | Proposed monorepo layout and ownership |
 | — | [phase-1.md](docs/phase-1.md) | What Phase 1 actually built, in diagrams |
+| — | [phase-2.md](docs/phase-2.md) | What Phase 2 actually built, in diagrams |
 | — | [adr/](docs/adr/) | Architecture decision records |
 
 ---

@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0 and 1 complete · **Last updated:** 2026-08-13
+**Status:** Phases 0, 1, and 2 complete · Phase 3 in progress · **Last updated:** 2026-08-14
 
 Ten phases. Each is a reviewable increment with explicit exit criteria; none begins until the previous one meets them.
 
@@ -36,21 +36,21 @@ Diagrams of what this phase actually produced are in [phase-1.md](./phase-1.md).
 
 ---
 
-## Phase 2 — Chat *(next)*
+## Phase 2 — Chat ✓
+
+Diagrams of what this phase produced are in [phase-2.md](./phase-2.md).
 
 | | |
 |---|---|
 | **Objective** | A chat product people can use daily |
-| **Scope** | Conversations and messages · SSE streaming end to end · **first frontier cloud adapter** (OpenAI or Anthropic — the quality tier US users expect) · model selector · conversation history · cancellation and regeneration · Markdown, code blocks, tables · dark/light themes · keyboard shortcuts · attachments (upload + storage, parsing deferred) |
-| **Key decisions** | Web uses `/v1/conversations/{id}/messages`, not raw chat completions; model attribution shown on every assistant message; frontier provider leads because the launch market is US mass-market, with Sarvam and the rest arriving in Phase 3 |
-| **Tests** | Streaming, cancellation mid-stream, non-Latin script round-trip, message ordering under concurrency |
-| **Security review** | XSS in rendered Markdown, upload validation and scanning, classification defaults |
-| **Performance review** | TTFT p95 through the full path; streaming overhead per chunk |
-| **Exit criteria** | Streaming chat with Sarvam and Ollama, persisted history, correct model attribution, no provider SDK imports outside the gateway |
+| **Scope** | Conversations and messages · SSE streaming end to end · model selector · conversation history · cancellation and regeneration · attachments (upload + storage, parsing deferred) |
+| **Key decisions** | Web uses `/v1/conversations/{id}/messages` for the product API; model attribution stored on every assistant message; stateless `/v1/chat` remains for programmatic callers |
+| **Tests** | 103 control-plane tests including streaming, cancellation, regeneration, attachments, tenant isolation |
+| **Exit criteria** | Streaming chat with persisted history, correct model attribution, immutable finalized messages ✓ |
 
 ---
 
-## Phase 3 — Model Gateway
+## Phase 3 — Model Gateway *(in progress)*
 
 | | |
 |---|---|

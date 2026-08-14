@@ -27,12 +27,15 @@ from janus_schemas.chat import (
     JanusUsageEvent,
     Usage,
 )
+from janus_schemas.embeddings import EmbeddingRequest, EmbeddingResponse
 from pydantic import BaseModel
 
 from gateway_app.backends import BackendRegistry, CallContext
 from gateway_app.backends.mock import estimate_tokens
+from gateway_app.cost import estimate_cost_usd
 from gateway_app.health import HealthTracker
 from gateway_app.router.resolver import Candidate, ResolutionResult
+from gateway_app.telemetry.writer import TelemetryWriter, UsageWrite
 
 logger = get_logger(__name__)
 
@@ -126,10 +129,12 @@ class Executor:
         health: HealthTracker,
         *,
         max_attempts: int = 3,
+        telemetry: TelemetryWriter | None = None,
     ) -> None:
         self._backends = backends
         self._health = health
         self._max_attempts = max_attempts
+        self._telemetry = telemetry or TelemetryWriter(None)
 
     def _attempts(self, resolution: ResolutionResult) -> list[Candidate]:
         # A pinned deployment is never substituted: the caller asked for exactly
@@ -180,6 +185,14 @@ class Executor:
                 outcome="success",
                 usage=response.usage,
                 ttft_ms=latency_ms,
+            )
+            await self._persist_success(
+                ctx,
+                candidate,
+                resolution,
+                response.usage,
+                ttft_ms=latency_ms,
+                fallback_used=attempt > 1,
             )
             return response, metadata
 
@@ -290,7 +303,6 @@ class Executor:
                     "prompt_tokens": usage.prompt_tokens,
                     "completion_tokens": usage.completion_tokens,
                     "usage_estimated": estimated,
-                    "phase_note": "durable usage records land in Phase 3",
                 },
             )
             _log_decision(
@@ -302,6 +314,15 @@ class Executor:
                 usage=usage,
                 ttft_ms=ttft_ms,
             )
+            await self._persist_success(
+                ctx,
+                candidate,
+                resolution,
+                usage,
+                ttft_ms=ttft_ms,
+                fallback_used=attempt > 1,
+                usage_estimated=estimated,
+            )
             yield StreamEvent(data="[DONE]")
             return
 
@@ -312,6 +333,73 @@ class Executor:
                 "last_error_code": last_error.code if last_error else None,
             },
         ) from last_error
+
+    async def embeddings(
+        self,
+        request: EmbeddingRequest,
+        resolution: ResolutionResult,
+        ctx: CallContext,
+    ) -> EmbeddingResponse:
+        candidate = resolution.primary
+        backend = self._backends.get(candidate.deployment.backend)
+        response = await backend.embeddings(request, candidate.deployment, ctx)
+        if ctx.organization_id:
+            cost = estimate_cost_usd(candidate.model, response.usage)
+            await self._telemetry.record_usage(
+                UsageWrite(
+                    request_id=ctx.request_id,
+                    organization_id=ctx.organization_id,
+                    model=candidate.model,
+                    deployment_key=candidate.deployment.key,
+                    usage=response.usage,
+                    operation="embedding",
+                    ttft_ms=ctx.elapsed_ms,
+                    total_ms=ctx.elapsed_ms,
+                    cost_usd=str(cost),
+                )
+            )
+        return response
+
+    async def _persist_success(
+        self,
+        ctx: CallContext,
+        candidate: Candidate,
+        resolution: ResolutionResult,
+        usage: Usage,
+        *,
+        ttft_ms: int | None,
+        fallback_used: bool,
+        usage_estimated: bool = False,
+    ) -> None:
+        if not ctx.organization_id:
+            return
+        cost = estimate_cost_usd(candidate.model, usage)
+        await self._telemetry.record_routing_decision(
+            request_id=ctx.request_id,
+            organization_id=ctx.organization_id,
+            resolution=resolution,
+            selected=candidate,
+            requested_model=resolution.routing_reason,
+            mode=ctx.mode.value,
+            classification=ctx.classification.value,
+            requirements={},
+            decision_ms=ctx.elapsed_ms,
+            fallback_used=fallback_used,
+        )
+        await self._telemetry.record_usage(
+            UsageWrite(
+                request_id=ctx.request_id,
+                organization_id=ctx.organization_id,
+                model=candidate.model,
+                deployment_key=candidate.deployment.key,
+                usage=usage,
+                ttft_ms=ttft_ms,
+                total_ms=ctx.elapsed_ms,
+                cost_usd=str(cost),
+                fallback_used=fallback_used,
+                usage_estimated=usage_estimated,
+            )
+        )
 
 
 def _chunk_length(chunk: ChatChunk) -> int:

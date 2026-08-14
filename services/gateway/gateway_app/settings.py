@@ -10,12 +10,20 @@ from pydantic import Field
 class GatewaySettings(BaseServiceSettings):
     service_name: str = "janus-gateway"
 
-    # Registry-as-code: the catalog is files in Git, applied per environment.
     registry_dir: Path = Field(default=Path("registry"))
 
-    # Callers are internal in Phase 1 (the control plane and workers). Public
-    # OpenAI-compatible access arrives in Phase 3 with per-organization keys.
+    # Internal callers (control plane) use a service token + X-Janus-* headers.
     gateway_service_token: str = Field(default="", min_length=0)
+
+    # Public OpenAI-compatible clients authenticate with organization API keys (jsk_…).
+    public_api_enabled: bool = True
+
+    # Optional Postgres for durable routing decisions and usage records.
+    database_url: str = ""
+
+    # Optional Redis for shared rate limits and health cache.
+    redis_url: str = ""
+    rate_limit_per_minute: int = 120
 
     request_timeout_seconds: float = 120.0
     connect_timeout_seconds: float = 5.0
@@ -25,7 +33,6 @@ class GatewaySettings(BaseServiceSettings):
     health_probe_enabled: bool = True
     unhealthy_failure_threshold: int = 3
 
-    # Local development default; overridden per deployment in the registry.
     ollama_base_url: str = "http://localhost:11434/v1"
 
     max_fallback_attempts: int = 3

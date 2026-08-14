@@ -18,18 +18,35 @@ services:
       timeout: 3s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    container_name: janus-redis
+    ports:
+      - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   gateway:
     build:
       context: .
       dockerfile: services/gateway/Dockerfile
     image: janus/gateway:dev
     profiles: ["full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       JANUS_ENVIRONMENT: local
       JANUS_REGISTRY_DIR: /app/registry
       JANUS_GATEWAY_SERVICE_TOKEN: ${JANUS_GATEWAY_SERVICE_TOKEN:-local-dev-token}
+      JANUS_DATABASE_URL: postgresql+asyncpg://janus_app:janus_app@postgres:5432/janus
+      JANUS_REDIS_URL: redis://redis:6379/0
       JANUS_LOG_LEVEL: INFO
-      # host.docker.internal lets the container reach an Ollama running on the host.
       JANUS_OLLAMA_BASE_URL: ${JANUS_OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
     ports:
       - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_GATEWAY_PORT:-8081}:8081"

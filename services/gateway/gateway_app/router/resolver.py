@@ -3,10 +3,9 @@
 Phase 1 scope is deliberate. Everything that makes a candidate *ineligible* is
 implemented now — mode, privacy, classification, region, provider, capability,
 context, and health — because those are correctness and security rules that must
-never be added later as an afterthought. What is *not* here is the weighted
-scoring model from docs/model-routing.md §5: ranking in Phase 1 is a stable,
-explainable ordering by health, declared priority, and tier. Phase 3 replaces
-``_rank`` with scoring, and nothing else in this file needs to change.
+never be added later as an afterthought. Phase 3 adds weighted scoring
+(docs/model-routing.md §5) on top of the same filter chain; eligibility rules are
+unchanged.
 
 Two invariants hold in both phases:
   - eligibility is a filter, never a preference: a candidate that violates a
@@ -34,6 +33,7 @@ from janus_schemas.common import (
 
 from gateway_app.health import HealthTracker
 from gateway_app.registry.records import DeploymentRecord, ModelRecord, Registry
+from gateway_app.router.scoring import ScoreBreakdown, WeightProfile, score_candidate
 
 _ALIAS_PREFIX = "janus/"
 _DEPLOYMENT_SEPARATOR = "@"
@@ -93,6 +93,8 @@ class ResolutionResult:
     explanation: str
     pinned: bool = False
     excluded: tuple[tuple[str, ExclusionReason], ...] = ()
+    weight_profile: str = WeightProfile.BALANCED.value
+    scores: tuple[tuple[str, ScoreBreakdown], ...] = ()
 
     @property
     def primary(self) -> Candidate:
@@ -120,13 +122,37 @@ class ModelResolver:
         if not eligible:
             raise self._no_eligible_model(request, excluded, pinned)
 
-        ordered = tuple(sorted(eligible, key=self._rank))
+        profile = WeightProfile.BALANCED
+        scored = [
+            (
+                candidate,
+                score_candidate(
+                    candidate.model,
+                    candidate.deployment,
+                    request.requirements,
+                    self._health,
+                    profile=profile,
+                ),
+            )
+            for candidate in eligible
+        ]
+        scored.sort(
+            key=lambda item: (
+                -item[1].total,
+                item[0].deployment.priority,
+                item[0].deployment.key,
+            )
+        )
+        ordered = tuple(item[0] for item in scored)
+        score_rows = tuple((item[0].deployment.key, item[1]) for item in scored)
         return ResolutionResult(
             candidates=ordered,
             routing_reason=routing_reason,
             explanation=self._explain(ordered[0], request, routing_reason),
             pinned=pinned,
             excluded=tuple(excluded),
+            weight_profile=profile.value,
+            scores=score_rows,
         )
 
     def eligible_candidates(
@@ -271,12 +297,11 @@ class ModelResolver:
 
     # --------------------------------------------------------------- ordering
 
-    def _rank(self, candidate: Candidate) -> tuple[int, int, int, str]:
-        """Stable Phase 1 ordering. Replaced by weighted scoring in Phase 3."""
-        state = self._health.state_for(candidate.deployment.key)
-        health_rank = 0 if state.name == "READY" else 1
+    @staticmethod
+    def _rank_legacy(candidate: Candidate) -> tuple[int, int, int, str]:
+        """Pre-Phase-3 ordering kept for tests that assert stable tie-breaks."""
         return (
-            health_rank,
+            0,
             candidate.deployment.priority,
             _TIER_ORDER.get(candidate.model.tier, 9),
             candidate.deployment.key,
