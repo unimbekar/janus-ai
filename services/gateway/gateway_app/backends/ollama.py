@@ -43,7 +43,8 @@ class OllamaBackend(OpenAICompatibleBackend):
             return report
 
         # A model that is present but not resident still serves — slowly. Report
-        # it as warming so the router deprioritizes rather than excludes it.
+        # it as degraded so the router can still pick it (first request loads the
+        # weights) while preferring already-resident deployments.
         try:
             tags_url = deployment.endpoint.rstrip("/").removesuffix("/v1") + "/api/ps"
             response = await self._client.get(tags_url, timeout=httpx.Timeout(3.0, connect=2.0))
@@ -51,9 +52,13 @@ class OllamaBackend(OpenAICompatibleBackend):
                 loaded = {
                     entry.get("name", "") for entry in response.json().get("models", []) or []
                 }
-                if not any(name.startswith(deployment.upstream_model_id) for name in loaded):
+                upstream = deployment.upstream_model_id
+                if not any(
+                    name == upstream or name.startswith(f"{upstream}:") or name.startswith(upstream)
+                    for name in loaded
+                ):
                     return HealthReport(
-                        HealthState.WARMING,
+                        HealthState.DEGRADED,
                         report.latency_ms,
                         "model_not_resident",
                     )

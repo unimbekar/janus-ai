@@ -1,0 +1,52 @@
+# Local NVIDIA Nemotron 3.5 (Lightning) served by Ollama.
+#
+# Already pulled on this machine as either:
+#   ollama pull nemotron35lightning
+#   ollama pull nemotron-3.5-lightning
+#
+# provider_model_id must match `ollama list` exactly.
+slug: janus/nemotron-3.5
+display_name: Nemotron 3.5 Lightning (Local)
+provider: nvidia
+family: nemotron
+version: "3.5"
+parameters: lightning
+type: chat
+tier: open_source
+context_window: 131072
+max_output_tokens: 8192
+languages: [en]
+capabilities:
+  - streaming
+  - reasoning
+  - coding
+  - tool_calling
+  - long_context
+cost_class: free
+latency_class: medium
+status: active
+metadata_verified: false
+aliases:
+  - janus/nemotron
+notes: >-
+  Local Ollama deployment of Nemotron 3.5 Lightning. Context and capability
+  figures are published estimates, not Janus-evaluated.
+license:
+  name: NVIDIA Open Model License
+  commercial_use: true
+deployments:
+  - key: ollama-nemotron35
+    backend: ollama
+    protocol: openai_compatible
+    deployment_type: local_dev
+    privacy_level: local
+    endpoint: ${JANUS_OLLAMA_BASE_URL:-http://localhost:11434/v1}
+    # Match the tag from `ollama list` on this host.
+    provider_model_id: nemotron35lightning:latest
+    max_context: 32768
+    max_concurrency: 1
+    priority: 60
+    hardware:
+      accelerator: gpu
+      runtime: ollama
+    initial_health: ready

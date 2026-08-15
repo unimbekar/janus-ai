@@ -85,7 +85,9 @@ stack-down: ## Stop the full container stack
 
 .PHONY: migrate
 migrate: ## Apply migrations
-	cd $(API_DIR) && $(UV) run alembic upgrade head
+	cd $(API_DIR) && \
+		JANUS_MIGRATION_DATABASE_URL="$${JANUS_MIGRATION_DATABASE_URL:-postgresql+asyncpg://janus:janus@localhost:5432/janus}" \
+		$(UV) run alembic upgrade head
 
 .PHONY: migrate-down
 migrate-down: ## Roll back one migration
@@ -98,8 +100,8 @@ migration: ## Create a migration:  make migration m="add teams"
 # -------------------------------------------------------------------- run
 
 .PHONY: run-gateway
-run-gateway: ## Run the Model Gateway on :8081
-	$(UV) run uvicorn gateway_app.main:app --reload --port 8081 \
+run-gateway: ## Run the Model Gateway
+	$(UV) run uvicorn gateway_app.main:app --reload --port $(JANUS_GATEWAY_PORT) \
 		--app-dir services/gateway
 
 .PHONY: run-api
@@ -107,8 +109,17 @@ run-api: ## Run the control plane
 	cd $(API_DIR) && $(UV) run uvicorn api_app.main:app --reload --port $(JANUS_API_PORT)
 
 .PHONY: run-web
-run-web: ## Run the web app
-	cd apps/web && npm run dev -- --port $(JANUS_WEB_PORT)
+run-web: ## Serve the web UI (production build — no file-watcher limit issues)
+	cd apps/web && \
+		JANUS_API_URL=$${JANUS_API_URL:-http://127.0.0.1:$(JANUS_API_PORT)} \
+		npm run build && \
+		JANUS_API_URL=$${JANUS_API_URL:-http://127.0.0.1:$(JANUS_API_PORT)} \
+		npm run start -- -H 0.0.0.0 -p $(JANUS_WEB_PORT)
+
+.PHONY: run-web-dev
+run-web-dev: ## Dev server with webpack (needs raised inotify watches)
+	cd apps/web && JANUS_API_URL=$${JANUS_API_URL:-http://127.0.0.1:$(JANUS_API_PORT)} \
+		npm run dev -- --webpack --port $(JANUS_WEB_PORT) -H 0.0.0.0
 
 .PHONY: smoke-chat
 smoke-chat: ## Log in, create a conversation, stream one reply

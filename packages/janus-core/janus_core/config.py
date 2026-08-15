@@ -25,7 +25,9 @@ class BaseServiceSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="JANUS_",
-        env_file=".env",
+        # Repo-root `.env` when launched from a service directory (make migrate /
+        # make run-api), plus a local `.env` for overrides.
+        env_file=(".env", "../.env", "../../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

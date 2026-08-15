@@ -9,3 +9,4 @@ enabled_deployments:
   - mock-reasoning-private
   - mock-embed-local
   - ollama-llama31-8b
+  - ollama-nemotron35
