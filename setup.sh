@@ -468,7 +468,23 @@ start_local_stack() {
   # shellcheck disable=SC1091
   [[ -f "${VENV_DIR}/bin/activate" ]] && source "${VENV_DIR}/bin/activate"
   ensure_path
+
+  # Pull / ensure Ollama tags from config/local-models.yaml (and .env extras).
+  if [[ -x "${ROOT}/install.sh" ]]; then
+    section "Local models (via install.sh)"
+    if "${ROOT}/install.sh" ensure-models; then
+      ok "local Ollama models ensured"
+    else
+      warn "ensure-models failed — mock models still work; fix Ollama and re-run: ./install.sh ensure-models"
+    fi
+  else
+    warn "install.sh missing — skipping Ollama model pulls"
+  fi
+
+  export JANUS_OLLAMA_COMPOSE_URL="${JANUS_OLLAMA_COMPOSE_URL:-http://host.docker.internal:11434/v1}"
   make -C "${ROOT}" stack-up
+  # Refresh gateway so local-model health probes see a reachable Ollama.
+  docker compose --profile full up -d --force-recreate --no-deps gateway >/dev/null 2>&1 || true
   ok "stack is up"
 
   local web=3000 bind="localhost" bind_cfg=""
@@ -497,13 +513,15 @@ ${C_GREEN}${C_BOLD}Janus is ready${C_RESET}
   Open:     ${C_BOLD}http://${bind}:${web}${C_RESET}
   Create a workspace, then send a chat message.
   Out of the box answers come from a mock model (no API key required).
+  Local Ollama models come from config/local-models.yaml (pulled above).
 
   Useful:
-    ./install.sh stop        # stop Compose + host-mode processes
+    ./install.sh stop           # stop Compose + host-mode processes
     ./install.sh status
-    make smoke-product       # knowledge + agents smoke
-    docs/UI.md               # UI walkthrough
-    docs/ui-mockups/         # screenshots for decks
+    ./install.sh ensure-models  # re-pull tags from config/local-models.yaml
+    make smoke-product          # knowledge + agents smoke
+    docs/UI.md                  # UI walkthrough
+    docs/ui-mockups/            # screenshots for decks
 
 EOF
 }

@@ -10,3 +10,4 @@ enabled_deployments:
   - mock-embed-local
   - ollama-llama31-8b
   - ollama-nemotron35
+  - ollama-qwen3-30b

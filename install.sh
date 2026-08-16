@@ -65,6 +65,7 @@ Commands:
   install       Install host tools + workspace deps (default)
   start         Start postgres, redis, gateway, api, web (Compose);
                 also ensures Ollama + tags from config/local-models.yaml
+  ensure-models Ensure Ollama is up and pull tags from config/local-models.yaml
   stop          Stop Compose stack and any host-mode API/gateway/web
   status        Containers, published ports, and health probes
   uninstall     Stop everything; optionally remove images and DB volume
@@ -431,29 +432,43 @@ ollama_host_base() {
 }
 
 list_local_ollama_tags() {
-  # Prefer .env override; else config/local-models.yaml; else Nemotron default.
-  if [[ -n "${JANUS_LOCAL_OLLAMA_MODELS:-}" ]]; then
-    echo "${JANUS_LOCAL_OLLAMA_MODELS}" | tr ',;' ' ' | xargs -n1 echo
-    return
-  fi
+  # Union of config/local-models.yaml (pull: true) and JANUS_LOCAL_OLLAMA_MODELS.
+  # Previously env replaced YAML entirely, which skipped newly uncommented models.
   local cfg="${ROOT}/config/local-models.yaml"
-  if [[ -f "${cfg}" ]] && have python3; then
-    python3 - "${cfg}" <<'PY' 2>/dev/null && return
+  local py="python3"
+  if [[ -x "${ROOT}/.venv/bin/python" ]]; then
+    py="${ROOT}/.venv/bin/python"
+  elif [[ -x "${VENV}/bin/python" ]]; then
+    py="${VENV}/bin/python"
+  fi
+  local tags=""
+  tags="$(
+    {
+      if [[ -f "${cfg}" ]]; then
+        "${py}" - "${cfg}" <<'PY' 2>/dev/null || true
 import sys
 from pathlib import Path
 try:
     import yaml
 except ImportError:
-    sys.exit(1)
+    sys.exit(0)
 data = yaml.safe_load(Path(sys.argv[1]).read_text()) or {}
-models = (data.get("ollama") or {}).get("models") or []
-for row in models:
+for row in (data.get("ollama") or {}).get("models") or []:
     tag = (row or {}).get("tag")
     if tag and (row.get("pull", True) is not False):
         print(tag)
 PY
+      fi
+      if [[ -n "${JANUS_LOCAL_OLLAMA_MODELS:-}" ]]; then
+        echo "${JANUS_LOCAL_OLLAMA_MODELS}" | tr ',;' ' ' | xargs -n1 echo
+      fi
+    } | awk 'NF && !seen[$0]++'
+  )"
+  if [[ -z "${tags}" ]]; then
+    echo "nemotron35lightning:latest"
+  else
+    printf '%s\n' "${tags}"
   fi
-  echo "nemotron35lightning:latest"
 }
 
 ensure_ollama() {
@@ -711,6 +726,7 @@ main() {
   case "${cmd}" in
     install|bootstrap) cmd_install "$@" ;;
     start|up)          cmd_start "$@" ;;
+    ensure-models|pull-models) ensure_ollama "$@" ;;
     stop|down)         cmd_stop "$@" ;;
     status|health)     cmd_status "$@" ;;
     uninstall|remove)  cmd_uninstall "$@" ;;
