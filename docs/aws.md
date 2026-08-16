@@ -1,8 +1,10 @@
 # AWS Architecture
 
-**Status:** Draft for review (Phase 0) · **Last updated:** 2026-08-13
+**Status:** as-built (Phase 7 ECS path) · target design for Phase 8 GPU · **Last updated:** 2026-08-16
 
 Hybrid by design: **ECS Fargate for the core platform, EKS only for GPU model serving** — and only once Janus actually hosts models.
+
+**Deploy runbook:** [aws-deploy.md](./aws-deploy.md) · Terraform code: [`infra/aws/`](../infra/aws/)
 
 Related: [architecture.md](./architecture.md) · [model-gateway.md](./model-gateway.md) · [security.md](./security.md) · [observability.md](./observability.md)
 
@@ -203,29 +205,36 @@ Kubernetes is adopted **where it earns its complexity** and nowhere else ([ADR 0
 
 ## 8. Terraform layout
 
+**As shipped today** the applyable stack lives in a single root module:
+
 ```text
-infra/terraform/
-├── modules/
-│   ├── network/            # VPC, subnets, NAT, endpoints, flow logs
-│   ├── edge/               # Route53, ACM, CloudFront, WAF
-│   ├── alb/                # ALB, listeners, target groups, rules
-│   ├── ecs-service/        # Reusable Fargate service (task, autoscaling, logs, role)
-│   ├── aurora/             # Cluster, parameter groups, pgvector, backups
-│   ├── redis/              # ElastiCache
-│   ├── s3-bucket/          # Hardened bucket baseline
-│   ├── sqs-queue/          # Queue + DLQ + alarms
-│   ├── secrets/            # Secret definitions + rotation + IAM
-│   ├── observability/      # Log groups, OTLP collector, dashboards, alarms
-│   ├── eks/                # Cluster, IRSA, add-ons            (Phase 8)
-│   └── eks-gpu-nodegroup/  # GPU pools, taints, autoscaling     (Phase 8)
-├── environments/
-│   ├── dev/                # backend.tf, main.tf, terraform.tfvars
-│   ├── staging/
-│   └── prod/
-└── bootstrap/              # State bucket, DynamoDB lock table, CI OIDC roles
+infra/aws/
+├── versions.tf              # providers + optional S3 backend
+├── variables.tf
+├── terraform.tfvars.example # copy → terraform.tfvars (gitignored)
+├── main.tf                  # locals / naming
+├── network.tf               # VPC, subnets, NAT
+├── data.tf                  # Aurora + Redis
+├── storage.tf               # ECR, S3, Secrets Manager
+├── security.tf              # security groups / IAM pieces
+├── ecs.tf                   # cluster, ALB, task defs, services
+├── alb_http.tf              # HTTP listener / HTTPS redirect
+├── gpu.tf                   # optional EKS (enable_gpu_eks)
+└── outputs.tf
 ```
 
-Rules: remote state per environment with locking · no resource names hard-coded in application code (discovered via SSM parameters or injected env) · `plan` on pull request, `apply` gated on approval for staging and production · CI assumes role via OIDC, no long-lived AWS keys · drift detection scheduled.
+Runbook: [aws-deploy.md](./aws-deploy.md). Naming: `local.name = "${name_prefix}-${environment}"` (default **`janus-staging`**).
+
+**Target modular layout** (future split — not required to deploy now):
+
+```text
+infra/terraform/
+├── modules/          # network, alb, ecs-service, aurora, redis, …
+├── environments/     # dev / staging / prod
+└── bootstrap/        # state bucket, lock table, CI OIDC
+```
+
+Rules: remote state per environment with locking · no resource names hard-coded in application code · `plan` on pull request, `apply` gated on approval · CI assumes role via OIDC · drift detection scheduled.
 
 ---
 

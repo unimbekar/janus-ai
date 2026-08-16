@@ -17,6 +17,21 @@ Website: <https://www.janus-intelligence.ai>
 
 ---
 
+## Deploy on AWS (start here)
+
+Local Compose is already verified on this host. To put the same app on **your** AWS account (ECS Fargate + Aurora + Redis + ALB):
+
+```bash
+./setup.sh --aws              # credentials, terraform.tfvars, optional plan/apply
+# after apply succeeds:
+#   follow docs/aws-deploy.md §6 (build/push images) and §7 (migrations)
+```
+
+Full runbook, checklist, and ARM→amd64 build notes: **[docs/aws-deploy.md](docs/aws-deploy.md)**.  
+Architecture: [docs/aws.md](docs/aws.md). Staging catalog (mocks only): [`registry/environments/staging.yaml`](registry/environments/staging.yaml).
+
+---
+
 ## Run it locally
 
 **Customer / Marketplace path (recommended):** one wizard installs tools, configures `.env`, and starts the stack:
@@ -28,24 +43,17 @@ chmod +x setup.sh
 ./setup.sh --local --yes
 ```
 
-Needs Docker. The script can offer to install Docker Engine (sudo). It creates a repo-local Python 3.12 venv (`.venv`), installs Node 22 under `~/.local` if needed, syncs dependencies, picks free ports, runs `make stack-up`, and prints the UI URL.
+Needs Docker. The script can offer to install Docker Engine (sudo). It creates a repo-local Python 3.12 venv (`.venv`), installs Node 22 under `~/.local` if needed, syncs dependencies, picks free ports, **ensures Ollama tags from [`config/local-models.yaml`](config/local-models.yaml)**, runs `make stack-up`, and prints the UI URL.
 
-For **AWS deploy** from the same entry point:
-
-```bash
-./setup.sh --aws           # credentials, tfvars, optional plan/apply
-./setup.sh --aws --apply   # also terraform apply (costs money)
-```
-
-Developer bootstrap on this DGX host (shared `venv` alias + host CLIs) remains:
+Developer bootstrap on this DGX host (shared `venv` alias + host CLIs):
 
 ```bash
-venv                      # Python 3.12 from dgx-ai-lab
-./install.sh              # Terraform, AWS CLI, gh, Node 22, uv sync, npm
-./install.sh start        # postgres, migrations, gateway, api, web
+venv                        # Python 3.12 from dgx-ai-lab
+./install.sh                # Terraform, AWS CLI, gh, Node 22, uv sync, npm
+./install.sh start          # Ollama ensure + Compose stack
 ./install.sh status
-./install.sh stop         # Compose down + host-mode API/gateway/web
-# or: make bootstrap / make stack-up / make stack-down
+./install.sh ensure-models  # pull tags from config/local-models.yaml only
+./install.sh stop           # Compose down + host-mode API/gateway/web
 ```
 
 ```bash
@@ -54,12 +62,15 @@ make smoke-chat    # log in, create a conversation, stream a mock reply
 make smoke-product # knowledge ingest/search + agent run + /v1/responses
 ```
 
-Open the web URL `make stack-up` prints (port 3000 unless `.env` overrides it), create a workspace, and send a message. Out of the box it answers from a deterministic mock model, so the whole path is verifiable with no API key and no GPU.
+Open the web URL `./install.sh start` / `make stack-up` prints (port from `.env`), create a workspace, and send a message. Out of the box it answers from a deterministic mock model (no API key, no GPU).
 
-If ports 3000, 8080, 8081, or 5432 are already taken, override them — nothing inside the stack depends on the published numbers:
+**Ports must be distinct.** `JANUS_API_PORT` and `JANUS_GATEWAY_PORT` cannot share a value (Compose will fail with “port is already allocated”). If 3000 / 8080 / 8081 / 5432 are taken:
 
 ```bash
-JANUS_WEB_PORT=3010 JANUS_API_PORT=8090 make stack-up
+# Example .env (API ≠ gateway)
+JANUS_WEB_PORT=3011
+JANUS_API_PORT=8090
+JANUS_GATEWAY_PORT=8091
 ```
 
 ### Using it from another machine
@@ -67,41 +78,47 @@ JANUS_WEB_PORT=3010 JANUS_API_PORT=8090 make stack-up
 The browser needs **only the web port**. The web server proxies `/api/*` to the control plane itself, so nothing in the page refers to the API's host or port — over an SSH tunnel, a forwarded port, or a private network address, it works with no reconfiguration.
 
 ```bash
-# Forward one port over SSH, then open http://localhost:3000 locally.
-ssh -L 3000:localhost:3000 you@host
+# Forward one port over SSH, then open http://localhost:3011 locally (use your JANUS_WEB_PORT).
+ssh -L 3011:localhost:3011 you@host
 ```
 
 To reach it over a private network (Tailscale, VPN, WireGuard) instead, pin the published ports to that interface so the stack is not exposed to the local network:
 
 ```bash
-JANUS_BIND_ADDRESS=100.x.y.z make stack-up   # then http://100.x.y.z:3000
+JANUS_BIND_ADDRESS=100.x.y.z ./install.sh start   # then http://100.x.y.z:$JANUS_WEB_PORT
 ```
 
 There is no TLS in the local stack. Reach it over a tunnel or a private network, not the open internet.
 
-To answer from a real local model, list tags in [`config/local-models.yaml`](config/local-models.yaml) (or `JANUS_LOCAL_OLLAMA_MODELS` in `.env`), keep the matching YAML under `registry/models/`, enable the deployment in `registry/environments/local.yaml`, then:
+### Local open-weight models (Ollama)
+
+List tags in [`config/local-models.yaml`](config/local-models.yaml) (and/or `JANUS_LOCAL_OLLAMA_MODELS` in `.env`), keep matching YAML under `registry/models/`, enable the deployment key in `registry/environments/local.yaml`, then:
 
 ```bash
-./install.sh start   # ensures Ollama, pulls listed tags, starts Compose
+./install.sh ensure-models   # start Ollama if needed, pull missing tags
+./install.sh start           # Compose; gateway uses JANUS_OLLAMA_COMPOSE_URL
 ```
 
-Compose reaches host Ollama via `JANUS_OLLAMA_COMPOSE_URL` (`host.docker.internal`). Host-mode (`make run-gateway`) uses `JANUS_OLLAMA_BASE_URL` (`127.0.0.1`).
+Shipped local examples: Nemotron 3.5 Lightning, Llama 3.1 8B, Qwen3 30B.  
+Compose reaches host Ollama via `host.docker.internal` (`JANUS_OLLAMA_COMPOSE_URL`). Host-mode (`make run-gateway`) uses `JANUS_OLLAMA_BASE_URL` (`127.0.0.1`).
+
+Watch chat traffic:
 
 ```bash
-ollama pull llama3.1:8b   # optional extra model; also add the tag to config/local-models.yaml
+docker compose --profile full logs -f api gateway
 ```
 
-For development with reload, run the pieces directly:
+For development with reload:
 
 ```bash
 make install
 make db-up migrate
-make run-gateway   # :8081
-make run-api       # :8080
-make run-web       # :3000
+make run-gateway   # JANUS_GATEWAY_PORT
+make run-api       # JANUS_API_PORT
+make run-web       # JANUS_WEB_PORT
 ```
 
-`make check` runs everything CI runs: lint, types, architectural boundaries, web checks, and tests. `make help` lists the rest.
+`make check` runs everything CI runs. `make help` lists the rest.
 
 ---
 
@@ -110,14 +127,13 @@ make run-web       # :3000
 | | **Local (now)** | **AWS (after deploy)** |
 |--|-----------------|-------------------------|
 | **Host** | This machine (e.g. DGX Spark) via Docker Compose | Your AWS account |
-| **web / api / gateway** | Compose containers on the host | **ECS Fargate** tasks (serverless containers) |
+| **web / api / gateway** | Compose containers on the host | **ECS Fargate** (`web`/`api` on ALB; gateway private) |
 | **Postgres / Redis** | Compose services on the host | Aurora PostgreSQL + ElastiCache |
-| **How you start it** | `make stack-up` | `terraform apply` in [`infra/aws`](infra/aws), then push images ([aws-deploy.md](docs/aws-deploy.md)) |
-| **How you reach it** | e.g. `http://localhost:3010` (ports from `.env`) | ALB DNS (CloudWatch logs under `/ecs/janus-<env>/…`) |
+| **Models** | Mock + Ollama (from `config/local-models.yaml`) | Staging: mocks only until you enable cloud keys |
+| **How you start it** | `./install.sh start` or `./setup.sh --local` | `./setup.sh --aws` → apply → push images → migrate ([aws-deploy.md](docs/aws-deploy.md)) |
+| **How you reach it** | `http://localhost:$JANUS_WEB_PORT` | ALB DNS; logs under `/ecs/janus-<env>/…` |
 
-**Today the stack is not on Fargate.** `api`, `gateway`, and `web` are ordinary Docker containers on the local host. Fargate is the production/staging runtime defined in Terraform; it exists only after you apply that stack and deploy images to ECR.
-
-Same application code and images in both places — only the orchestrator changes (Compose vs ECS).
+**Today the stack is not on Fargate until you apply Terraform and push images.** Same application code and Dockerfiles in both places — only the orchestrator changes (Compose vs ECS).
 
 Troubleshooting: [docs/runbooks/troubleshooting.md](docs/runbooks/troubleshooting.md). Architecture / scaling: [docs/architecture.md](docs/architecture.md#23-serverless-compute--and-how-it-scales-under-load).
 

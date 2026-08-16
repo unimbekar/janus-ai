@@ -1,44 +1,83 @@
 # Deploy Janus on AWS
 
-**Status:** as-built for Phase 7 · **Last updated:** 2026-08-14
+**Status:** as-built for Phase 7 · **Last updated:** 2026-08-16
 
-This is the runbook for applying `infra/aws` to **your** AWS account. Architecture
-context lives in [aws.md](./aws.md). Marketplace listing steps are in
-[marketplace.md](./marketplace.md).
+This is the runbook for applying [`infra/aws`](../infra/aws) to **your** AWS
+account. Architecture context: [aws.md](./aws.md). Marketplace prep:
+[marketplace.md](./marketplace.md). Local product path: [README.md](../README.md).
 
-**Never paste access keys into chat, tickets, or git.** Configure the AWS CLI (or
-temporary env vars) on the machine that runs Terraform.
+**Never paste access keys into chat, tickets, or git.** Configure the AWS CLI
+(or temporary env vars) on the machine that runs Terraform.
+
+---
+
+## What you get after a successful deploy
+
+| Piece | AWS resource |
+|-------|----------------|
+| UI + API | ALB → ECS Fargate (`web`, `api`); gateway is **internal** (service discovery) |
+| Database | Aurora PostgreSQL 16 Serverless v2 + pgvector |
+| Cache | ElastiCache Redis |
+| Images | ECR (`gateway`, `api`, `web`) |
+| Secrets | Secrets Manager (`JANUS_*` URLs and tokens) |
+| Logs | CloudWatch `/ecs/janus-<environment>/…` |
+
+Default `environment = "staging"` → cluster / prefix **`janus-staging`**.
+
+**Not included on day one:** host Ollama / DGX local models, GPU EKS
+(`enable_gpu_eks = false`), ACM HTTPS (optional), Marketplace listing.
+
+Staging catalog uses [`registry/environments/staging.yaml`](../registry/environments/staging.yaml)
+(mock models only). Cloud providers are opt-in after you add secrets.
+
+---
+
+## Quick path (recommended)
+
+From the repo root on a machine with Docker:
+
+```bash
+# Tools + credentials + terraform.tfvars + optional state bootstrap / plan / apply
+./setup.sh --aws
+# or non-interactive apply (costs money):
+./setup.sh --aws --apply --yes
+```
+
+Then finish **§6 Build and push images** and **§7 Migrations** below — Terraform
+alone does not put application images into ECS or migrate Aurora.
+
+Developer tools-only (DGX / existing CLI install):
+
+```bash
+./install.sh --tools-only   # Terraform, AWS CLI, gh, Node under ~/.local
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+---
+
+## Checklist before you spend money
+
+- [ ] AWS account ID (12 digits) and IAM principal that can create VPC, ECS,
+      Aurora, ElastiCache, ECR, ALB, Secrets Manager, IAM, CloudWatch
+- [ ] `aws sts get-caller-identity` works (`AWS_PROFILE=janus` recommended)
+- [ ] Docker can build `linux/amd64` images if you build from ARM (DGX Spark) —
+      use `docker build --platform linux/amd64` (see §6)
+- [ ] You accept staging cost (NAT + Aurora Serverless v2 + Fargate + Redis;
+      typically tens of USD/day while running)
+- [ ] `registry/environments/staging.yaml` is present (shipped in this repo)
 
 ---
 
 ## 1. Prerequisites
 
-- AWS account ID (12 digits)
-- IAM user or role with permission to create VPC, ECS, Aurora, ElastiCache, ECR,
-  ALB, Secrets Manager, IAM roles, and CloudWatch Logs
-- Access key **or** SSO login for that principal
-- Docker (to build and push images)
+- AWS account + IAM permissions listed above
+- Access key **or** SSO for that principal
+- Docker (build + push)
 - Terraform ≥ 1.5
 - This repository checked out
 
-**Recommended:** from the repo root run the customer wizard:
-
-```bash
-./setup.sh --aws
-# installs AWS CLI + Terraform if needed, writes terraform.tfvars,
-# optionally bootstraps S3/DynamoDB state and terraform plan/apply
-```
-
-On the DGX host, the older developer path still works:
-
-```bash
-venv                 # alias → dgx-ai-lab/.venv (Python 3.12)
-./install.sh --tools-only
-# puts terraform, aws, gh under ~/.local/bin
-```
-
-Aurora PostgreSQL 16 with the `vector` extension (pgvector) is required; the
-Terraform stack uses Aurora Serverless v2.
+Aurora PostgreSQL 16 with the `vector` extension is required; Terraform uses
+Aurora Serverless v2. Migration `0004` runs `CREATE EXTENSION IF NOT EXISTS vector`.
 
 ---
 
@@ -48,10 +87,7 @@ Terraform stack uses Aurora Serverless v2.
 
 ```bash
 aws configure --profile janus
-# AWS Access Key ID:     <your key>
-# AWS Secret Access Key: <your secret>
-# Default region name:   us-east-1
-# Default output format: json
+# Access Key ID / Secret / region (e.g. us-east-1) / output json
 
 export AWS_PROFILE=janus
 export AWS_ACCOUNT_ID=123456789012   # your account
@@ -70,11 +106,13 @@ export AWS_ACCOUNT_ID=123456789012
 aws sts get-caller-identity
 ```
 
-Unset the variables when finished (`unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY`).
+Unset when finished: `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY`.
 
 ---
 
 ## 3. One-time bootstrap (remote Terraform state)
+
+`./setup.sh --aws` can do this interactively. Manual equivalent:
 
 ```bash
 ACCOUNT=$AWS_ACCOUNT_ID
@@ -97,8 +135,16 @@ aws dynamodb create-table \
   --region "$REGION"
 ```
 
-Uncomment the `backend "s3"` block in `infra/aws/versions.tf` and set the bucket
-name to `janus-tfstate-<account-id>`.
+Uncomment the `backend "s3"` block in [`infra/aws/versions.tf`](../infra/aws/versions.tf)
+and set `bucket = "janus-tfstate-<account-id>"`. Then:
+
+```bash
+cd infra/aws
+terraform init -reconfigure
+```
+
+Until the backend is enabled, Terraform stores state **locally** under
+`infra/aws/` (fine for a first personal apply; not fine for a shared team).
 
 ---
 
@@ -107,14 +153,16 @@ name to `janus-tfstate-<account-id>`.
 ```bash
 cd infra/aws
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars:
-#   aws_account_id = "123456789012"
-#   environment    = "staging"
-#   acm_certificate_arn = ""   # set for HTTPS / production
+# Edit:
+#   aws_account_id      = "123456789012"
+#   aws_region          = "us-east-1"
+#   environment         = "staging"
+#   name_prefix         = "janus"
+#   acm_certificate_arn = ""          # empty = HTTP-only ALB for smoke
+#   enable_gpu_eks      = false
 ```
 
-`terraform.tfvars` is gitignored via the usual local-only pattern — do not commit
-account-specific files with secrets. There are **no** access keys in tfvars.
+`terraform.tfvars` is gitignored. **No access keys in this file.**
 
 ---
 
@@ -131,77 +179,128 @@ Capture outputs:
 
 ```bash
 terraform output
-ALB=$(terraform output -raw alb_dns_name)
+export ALB=$(terraform output -raw alb_dns_name)
+export CLUSTER=$(terraform output -raw ecs_cluster)   # e.g. janus-staging
+export REGION=$(terraform output -raw region)
+export ACCOUNT=$(terraform output -raw account_id)
 ```
 
-First apply takes 20–40 minutes (Aurora + NAT + ECS).
+First apply often takes **20–40 minutes** (Aurora + NAT + ECS).
 
 ---
 
 ## 6. Build and push images
 
+ECS tasks pull from ECR. Until you push, services stay unhealthy / crash-looping.
+
 ```bash
 cd ../..   # repo root
-REGION=us-east-1
-ACCOUNT=$AWS_ACCOUNT_ID
-PREFIX=janus-staging   # must match name_prefix-environment
+PREFIX="${CLUSTER}"   # same as terraform output ecs_cluster, e.g. janus-staging
 
 aws ecr get-login-password --region "$REGION" \
-  | docker login --username AWS --password-stdin "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
+  | docker login --username AWS --password-stdin \
+      "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
+
+# From an ARM host (DGX Spark), target Fargate amd64:
+PLATFORM=linux/amd64
 
 for svc in gateway api web; do
+  REPO="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${PREFIX}/${svc}"
   if [ "$svc" = "web" ]; then
-    docker build -t "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${PREFIX}/web:latest" apps/web
+    docker build --platform "$PLATFORM" -t "${REPO}:latest" apps/web
   else
-    docker build -f "services/${svc}/Dockerfile" \
-      -t "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${PREFIX}/${svc}:latest" .
+    docker build --platform "$PLATFORM" -f "services/${svc}/Dockerfile" \
+      -t "${REPO}:latest" .
   fi
-  docker push "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com/${PREFIX}/${svc}:latest"
+  docker push "${REPO}:latest"
 done
 ```
 
-Force a new ECS deployment after the push:
+Force a new deployment:
 
 ```bash
-CLUSTER=janus-staging
 for svc in gateway api web; do
-  aws ecs update-service --cluster "$CLUSTER" --service "${CLUSTER}-${svc}" --force-new-deployment
+  aws ecs update-service \
+    --cluster "$CLUSTER" \
+    --service "${CLUSTER}-${svc}" \
+    --force-new-deployment \
+    --region "$REGION"
 done
+```
+
+Watch:
+
+```bash
+aws ecs describe-services --cluster "$CLUSTER" --region "$REGION" \
+  --services "${CLUSTER}-api" "${CLUSTER}-gateway" "${CLUSTER}-web" \
+  --query 'services[].{name:serviceName,running:runningCount,desired:desiredCount,rollout:deployments[0].rolloutState}'
 ```
 
 ---
 
 ## 7. Run database migrations
 
-Migrations must run **once** against the Aurora writer before API traffic is
-healthy. Easiest path: one-off ECS task or a bastion with network access to the
-data subnets.
+Migrations must run **once** against the Aurora writer before the API is useful.
+App tasks use the RLS role `janus_app`; migrations use the owner URL from Secrets Manager.
+
+### Option A — one-off ECS task (preferred)
+
+Use the **api** task definition, same private subnets and security group as the
+api service, override the command to `["alembic", "upgrade", "head"]`, and set
+the same secrets as the api task (`JANUS_MIGRATION_DATABASE_URL`,
+`JANUS_APP_DB_PASSWORD`, …). Console: ECS → Task definitions → api →
+**Deploy** → **Run task**. CLI shape:
 
 ```bash
-# Example: run the API image with the migrate command, same task role / subnets.
-# Pull JANUS_MIGRATION_DATABASE_URL and JANUS_APP_DB_PASSWORD from Secrets Manager.
-alembic upgrade head
+# Fill NETWORK_CONFIG from the running api service (subnets + sg).
+aws ecs run-task \
+  --cluster "$CLUSTER" \
+  --launch-type FARGATE \
+  --task-definition "${CLUSTER}-api" \
+  --network-configuration "$NETWORK_CONFIG" \
+  --overrides '{"containerOverrides":[{"name":"api","command":["alembic","upgrade","head"]}]}' \
+  --region "$REGION"
 ```
 
-The migration creates the `janus_app` role (RLS-enforced). Application containers
-already point `JANUS_DATABASE_URL` at that role.
+Exact task-definition family name: check
+`aws ecs list-task-definitions --family-prefix "${CLUSTER}"`.
 
-Enable pgvector is done inside migration `0004` (`CREATE EXTENSION IF NOT EXISTS vector`).
-Aurora must allow the extension (PostgreSQL 16 + pgvector is supported on current
-Aurora versions).
+### Option B — bastion / VPN
+
+With network reachability to Aurora and secrets loaded (do not print them):
+
+```bash
+alembic upgrade head   # from services/api with JANUS_MIGRATION_DATABASE_URL set
+```
 
 ---
 
 ## 8. Smoke test
 
+ALB routes:
+
+- `/` → **web**
+- `/v1/*`, `/healthz`, `/readyz`, `/docs` → **api**
+- Gateway is **not** on the ALB (api calls it over private DNS)
+
 ```bash
 curl -fsS "http://${ALB}/healthz"
 curl -fsS "http://${ALB}/readyz"
-# Open http://$ALB in a browser — register a workspace and send a chat message.
+# Browser: http://$ALB — register a workspace and chat (mock model).
 ```
 
-For HTTPS, set `acm_certificate_arn` to a certificate in the **same region** as
-the ALB, re-apply, and put Route 53 (or CloudFront) in front.
+Logs:
+
+```bash
+aws logs tail "/ecs/${CLUSTER}/api" --follow --region "$REGION"
+aws logs tail "/ecs/${CLUSTER}/gateway" --follow --region "$REGION"
+aws logs tail "/ecs/${CLUSTER}/web" --follow --region "$REGION"
+```
+
+For HTTPS: set `acm_certificate_arn` to a cert in the **same region** as the ALB,
+`terraform apply` again, then put Route 53 (or CloudFront) in front.
+
+More ops detail: [runbooks/troubleshooting.md](./runbooks/troubleshooting.md).
 
 ---
 
@@ -210,12 +309,12 @@ the ALB, re-apply, and put Route 53 (or CloudFront) in front.
 | Resource | Purpose |
 |----------|---------|
 | VPC + public/private/data subnets + NAT | Network isolation |
-| ALB | Web `/` and API `/v1/*` |
-| ECS Fargate services | `web`, `api`, `gateway` |
+| ALB | Web `/` and API `/v1/*` (and health) |
+| ECS Fargate | `web`, `api`, `gateway` (gateway internal-only) |
 | Aurora PostgreSQL 16 Serverless v2 | RLS + pgvector |
-| ElastiCache Redis | Shared rate limits |
+| ElastiCache Redis | Shared rate limits / cache |
 | ECR | Images |
-| Secrets Manager | DB URL, gateway token, Redis URL |
+| Secrets Manager | DB URLs, gateway token, Redis URL |
 | S3 | Attachments |
 | Optional EKS (`enable_gpu_eks`) | Phase 8 GPU control plane only |
 
@@ -223,10 +322,11 @@ the ALB, re-apply, and put Route 53 (or CloudFront) in front.
 
 ## 10. Cost and safety notes
 
-- Staging defaults are small (`cache.t4g.micro`, Aurora min 0.5 ACU, one NAT).
+- Staging defaults are small (`cache.t4g.micro`, Aurora min ACU, one NAT).
 - `deletion_protection` is on for `prod` only.
 - GPU EKS is **off**. Turning it on without node groups still costs a control plane.
 - Prefer IAM Identity Center / OIDC for CI over long-lived access keys.
+- Tear down when idle: `terraform destroy` (§11) — NAT + Aurora dominate cost.
 
 ---
 
@@ -237,3 +337,15 @@ cd infra/aws
 terraform destroy
 # Empty and delete the tfstate bucket only when you are sure.
 ```
+
+---
+
+## After staging works
+
+1. Add cloud provider secrets (OpenAI / Anthropic / …) to Secrets Manager and
+   enable matching deployment keys in `registry/environments/staging.yaml`
+   (rebuild/push **gateway** image so the registry files ship).
+2. Set `acm_certificate_arn` and DNS for HTTPS.
+3. For production: new `environment = "prod"` (or separate state), keep
+   `registry/environments/prod.yaml` empty until you deliberately enable models.
+4. Marketplace listing: [marketplace.md](./marketplace.md).

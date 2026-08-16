@@ -1,0 +1,11 @@
+# Staging on AWS (ECS Fargate).
+#
+# Same safe baseline as `dev`: deterministic mock backends only. Do not enable
+# Ollama here — there is no host GPU beside Fargate. Enable cloud provider
+# deployments only after secrets are in Secrets Manager and reviewed.
+environment: staging
+
+enabled_deployments:
+  - mock-small-local
+  - mock-reasoning-private
+  - mock-embed-local

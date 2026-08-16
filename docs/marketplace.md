@@ -12,7 +12,7 @@ review queues. You can prepare everything this week; go-live is AWS-gated.
 
 **Do not put AWS access keys in the listing, screenshots, or this repository.**
 
-Related: [aws-deploy.md](./aws-deploy.md) · [aws.md](./aws.md)
+Related: [aws-deploy.md](./aws-deploy.md) · [aws.md](./aws.md) · local eval: `./setup.sh --local --yes`
 
 ---
 

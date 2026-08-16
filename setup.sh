@@ -681,9 +681,11 @@ ${C_GREEN}AWS prep complete${C_RESET}
   Marketplace:   docs/marketplace.md
 
   After apply:
-    1. Build & push images to ECR (aws-deploy.md §6)
+    1. Build & push images to ECR (docs/aws-deploy.md §6) — use --platform linux/amd64 from ARM
     2. Run alembic upgrade head against Aurora (§7)
-    3. Open the ALB URL and create a workspace
+    3. Open the ALB URL and create a workspace (staging catalog = mocks)
+
+  Staging registry: registry/environments/staging.yaml
 
 EOF
 }

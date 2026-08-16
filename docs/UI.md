@@ -1,7 +1,7 @@
 # Janus UI — customer presentation
 
 **Status:** as-built product UI · **Last updated:** 2026-08-14  
-**Live demo:** local `http://localhost:3010` (or the port `make stack-up` prints)
+**Live demo:** local `http://localhost:$JANUS_WEB_PORT` (see `.env`; often `3010` / `3011` on this Spark host, or `3000` by default)
 
 ## Visual mockups (open these for the deck)
 

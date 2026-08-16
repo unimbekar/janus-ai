@@ -1,5 +1,6 @@
 # Copy to terraform.tfvars (never commit secrets).
 # Credentials come from the environment / AWS CLI, not this file.
+# Full runbook: docs/aws-deploy.md
 
 aws_account_id = "123456789012"
 aws_region     = "us-east-1"
