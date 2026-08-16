@@ -40,15 +40,17 @@ For **AWS deploy** from the same entry point:
 Developer bootstrap on this DGX host (shared `venv` alias + host CLIs) remains:
 
 ```bash
-venv                 # Python 3.12 from dgx-ai-lab
-./install.sh         # Terraform, AWS CLI, gh, Node 22, uv sync, npm
-# or: make bootstrap
+venv                      # Python 3.12 from dgx-ai-lab
+./install.sh              # Terraform, AWS CLI, gh, Node 22, uv sync, npm
+./install.sh start        # postgres, migrations, gateway, api, web
+./install.sh status
+./install.sh stop         # Compose down + host-mode API/gateway/web
+# or: make bootstrap / make stack-up / make stack-down
 ```
 
 ```bash
-make env          # create .env from the example
-make stack-up     # postgres, migrations, gateway, api, web
-make smoke-chat   # log in, create a conversation, stream a mock reply
+make env           # create .env from the example
+make smoke-chat    # log in, create a conversation, stream a mock reply
 make smoke-product # knowledge ingest/search + agent run + /v1/responses
 ```
 
@@ -77,10 +79,16 @@ JANUS_BIND_ADDRESS=100.x.y.z make stack-up   # then http://100.x.y.z:3000
 
 There is no TLS in the local stack. Reach it over a tunnel or a private network, not the open internet.
 
-To answer from a real local model instead, pull one with Ollama and restart the gateway:
+To answer from a real local model, list tags in [`config/local-models.yaml`](config/local-models.yaml) (or `JANUS_LOCAL_OLLAMA_MODELS` in `.env`), keep the matching YAML under `registry/models/`, enable the deployment in `registry/environments/local.yaml`, then:
 
 ```bash
-ollama pull llama3.1:8b
+./install.sh start   # ensures Ollama, pulls listed tags, starts Compose
+```
+
+Compose reaches host Ollama via `JANUS_OLLAMA_COMPOSE_URL` (`host.docker.internal`). Host-mode (`make run-gateway`) uses `JANUS_OLLAMA_BASE_URL` (`127.0.0.1`).
+
+```bash
+ollama pull llama3.1:8b   # optional extra model; also add the tag to config/local-models.yaml
 ```
 
 For development with reload, run the pieces directly:

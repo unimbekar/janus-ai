@@ -499,7 +499,8 @@ ${C_GREEN}${C_BOLD}Janus is ready${C_RESET}
   Out of the box answers come from a mock model (no API key required).
 
   Useful:
-    make stack-down          # stop
+    ./install.sh stop        # stop Compose + host-mode processes
+    ./install.sh status
     make smoke-product       # knowledge + agents smoke
     docs/UI.md               # UI walkthrough
     docs/ui-mockups/         # screenshots for decks

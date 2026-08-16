@@ -1,0 +1,24 @@
+# Local open-weight models for this machine.
+#
+# Used by `./install.sh start` to ensure Ollama is up and the listed tags are
+# pulled. Catalog entries live under registry/models/*.yaml and must be enabled
+# in registry/environments/local.yaml — this file only covers runtime ensure.
+#
+# Override the tag list from .env without editing this file:
+#   JANUS_LOCAL_OLLAMA_MODELS=nemotron35lightning:latest,llama3.1:8b
+
+ollama:
+  # Used when probing/pulling from the host (install.sh). Compose gateway uses
+  # JANUS_OLLAMA_COMPOSE_URL / host.docker.internal instead.
+  host_base_url: http://127.0.0.1:11434
+
+  models:
+    # Must match `ollama list` and provider_model_id in registry/models/nemotron-35-local.yaml
+    - tag: nemotron35lightning:latest
+      pull: true
+      display_name: Nemotron 3.5 Lightning (Local)
+
+    # Optional — uncomment or add via JANUS_LOCAL_OLLAMA_MODELS after: ollama pull llama3.1:8b
+    # - tag: llama3.1:8b
+    #   pull: true
+    #   display_name: Llama 3.1 8B (Local)

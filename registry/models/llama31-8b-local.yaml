@@ -51,6 +51,6 @@ deployments:
     hardware:
       accelerator: gpu
       runtime: ollama
-    # Nothing is loaded until the first request, so start as warming and let the
-    # health probe promote it.
-    initial_health: warming
+    # Start ready so the Models tab lists it before the first load. The Ollama
+    # adapter reports degraded (still routable) when the weights are not resident.
+    initial_health: ready

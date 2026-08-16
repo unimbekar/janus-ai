@@ -46,7 +46,9 @@ services:
       JANUS_DATABASE_URL: postgresql+asyncpg://janus_app:janus_app@postgres:5432/janus
       JANUS_REDIS_URL: redis://redis:6379/0
       JANUS_LOG_LEVEL: INFO
-      JANUS_OLLAMA_BASE_URL: ${JANUS_OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+      # Reach Ollama on the host. Do not reuse JANUS_OLLAMA_BASE_URL from .env when
+      # that value is 127.0.0.1 — inside the container that is not the host.
+      JANUS_OLLAMA_BASE_URL: ${JANUS_OLLAMA_COMPOSE_URL:-http://host.docker.internal:11434/v1}
     ports:
       - "${JANUS_BIND_ADDRESS:-0.0.0.0}:${JANUS_GATEWAY_PORT:-8081}:8081"
     extra_hosts:
