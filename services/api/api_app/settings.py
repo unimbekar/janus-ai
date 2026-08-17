@@ -41,6 +41,9 @@ class ApiSettings(BaseServiceSettings):
     attachment_max_bytes: int = 20 * 1024 * 1024
     attachment_max_per_message: int = 10
 
+    knowledge_upload_max_bytes: int = 8 * 1024 * 1024
+    knowledge_upload_max_files: int = 10
+
     @property
     def effective_migration_url(self) -> str:
         return self.migration_database_url or self.database_url

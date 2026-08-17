@@ -1,13 +1,36 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Topbar } from "@/components/Topbar";
 import {
+  ApiError,
   api,
   type KnowledgeBase,
   type SearchHit,
   type SessionInfo,
 } from "@/lib/api";
+
+const ACCEPT =
+  ".txt,.text,.log,.md,.markdown,.csv,.json,.html,.htm,.pdf,.docx,text/plain,text/markdown,text/csv,text/html,application/json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+function uploadErrorMessage(caught: unknown): string {
+  if (caught instanceof ApiError) {
+    const items = caught.error.details?.errors;
+    if (Array.isArray(items) && items.length > 0) {
+      return items
+        .map((item) => {
+          if (item && typeof item === "object" && "filename" in item && "message" in item) {
+            return `${String(item.filename)}: ${String(item.message)}`;
+          }
+          return null;
+        })
+        .filter((line): line is string => Boolean(line))
+        .join(" ");
+    }
+    return caught.error.message;
+  }
+  return "Ingest failed. Duplicate content is rejected.";
+}
 
 export function Knowledge({
   session,
@@ -23,10 +46,13 @@ export function Knowledge({
   const [content, setContent] = useState(
     "Janus routes every model call through the gateway.\n\nAgents never talk to providers directly.",
   );
+  const [files, setFiles] = useState<File[]>([]);
   const [query, setQuery] = useState("gateway");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refresh() {
     const next = await api.knowledgeBases();
@@ -48,6 +74,7 @@ export function Knowledge({
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const created = await api.createKnowledgeBase({ name });
       setSelectedId(created.id);
@@ -64,11 +91,40 @@ export function Knowledge({
     if (!selectedId) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await api.ingestDocument(selectedId, { title, content });
+      setNotice("Pasted text was ingested.");
       await refresh();
     } catch {
       setError("Ingest failed. Duplicate content is rejected.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onUpload(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedId || files.length === 0) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api.ingestDocumentsFromFiles(selectedId, files);
+      const ingested = result.data.length;
+      const skipped = result.errors.length;
+      const skipNote =
+        skipped === 0
+          ? ""
+          : ` ${skipped} skipped: ${result.errors.map((item) => `${item.filename} (${item.message})`).join("; ")}`;
+      setNotice(
+        `Ingested ${ingested} file${ingested === 1 ? "" : "s"}.${skipNote}`,
+      );
+      setFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      await refresh();
+    } catch (caught) {
+      setError(uploadErrorMessage(caught));
     } finally {
       setBusy(false);
     }
@@ -96,10 +152,13 @@ export function Knowledge({
         <div className="page-inner">
           <h1>Knowledge</h1>
           <p className="lede">
-            Upload text, embed through the gateway, retrieve with pgvector. Answers
-            that use this store can cite the chunks they relied on.
+            Paste text or upload files. Janus chunks them, embeds through the
+            gateway, and retrieves with pgvector. Chat and agents both use this
+            store — ask a question in Chat and the answer is grounded in your
+            documents.
           </p>
           {error && <div className="error">{error}</div>}
+          {notice && <div className="notice">{notice}</div>}
 
           <div className="stack-grid">
             <form className="panel" onSubmit={onCreate}>
@@ -134,8 +193,47 @@ export function Knowledge({
             </form>
 
             <div className="panel">
+              <form onSubmit={onUpload}>
+                <h2>Upload files</h2>
+                <p className="field-hint">
+                  One or more .txt, .md, .csv, .json, .html, .pdf, or .docx files.
+                  PDFs need a text layer (not a scan). Max 10 files, 8 MB each.
+                </p>
+                <div className="field">
+                  <label htmlFor="kb-files">Files</label>
+                  <input
+                    id="kb-files"
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPT}
+                    multiple
+                    onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+                  />
+                </div>
+                {files.length > 0 && (
+                  <ul className="file-list">
+                    {files.map((file) => (
+                      <li key={`${file.name}-${file.size}-${file.lastModified}`}>
+                        {file.name}
+                        <span className="muted">
+                          {" "}
+                          · {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  className="primary"
+                  type="submit"
+                  disabled={!selectedId || busy || files.length === 0}
+                >
+                  Upload
+                </button>
+              </form>
+
               <form onSubmit={onIngest}>
-                <h2>Ingest text</h2>
+                <h2>Or paste text</h2>
                 <div className="field">
                   <label htmlFor="doc-title">Title</label>
                   <input

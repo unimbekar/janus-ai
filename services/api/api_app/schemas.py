@@ -159,6 +159,7 @@ class MessageResponse(BaseModel):
     error: dict | None = None
     parent_message_id: str | None = None
     attachments: list[AttachmentResponse] = Field(default_factory=list)
+    citations: list[dict] = Field(default_factory=list)
     created_at: datetime
 
 

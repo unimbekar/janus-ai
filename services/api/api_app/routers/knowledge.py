@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
-from janus_core.errors import AuthorizationError
+from fastapi import APIRouter, File, UploadFile, status
+from janus_core.errors import AuthorizationError, JanusError, ValidationError
 from janus_core.ids import IdPrefix, new_id
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,9 +14,12 @@ from api_app.deps import (
     PrincipalDep,
     RequestIdDep,
     SessionDep,
+    SettingsDep,
 )
+from api_app.extract import extract_text, infer_mime
 from api_app.knowledge import KnowledgeService
 from api_app.models import KnowledgeBase, KnowledgeDocument
+from api_app.storage import safe_filename
 
 router = APIRouter(prefix="/v1/knowledge-bases", tags=["knowledge"])
 knowledge = KnowledgeService()
@@ -50,6 +53,17 @@ class DocumentResponse(BaseModel):
     status: str
     chunk_count: int
     content_sha256: str | None
+
+
+class UploadError(BaseModel):
+    filename: str
+    code: str
+    message: str
+
+
+class UploadDocumentsResponse(BaseModel):
+    data: list[DocumentResponse]
+    errors: list[UploadError]
 
 
 class SearchRequest(BaseModel):
@@ -140,6 +154,74 @@ async def ingest_document(
         classification=classification,
     )
     return _doc(document)
+
+
+@router.post("/{knowledge_base_id}/uploads")
+async def upload_documents(
+    knowledge_base_id: str,
+    principal: PrincipalDep,
+    session: SessionDep,
+    gateway: GatewayDep,
+    mode: ModeDep,
+    classification: ClassificationDep,
+    request_id: RequestIdDep,
+    settings: SettingsDep,
+    files: list[UploadFile] = File(...),
+) -> UploadDocumentsResponse:
+    """Extract text from one or more files and ingest each as a document."""
+    if not files:
+        raise ValidationError("Select at least one file.", param="files")
+    if len(files) > settings.knowledge_upload_max_files:
+        raise ValidationError(
+            "Too many files in one upload.",
+            param="files",
+            details={"limit": settings.knowledge_upload_max_files},
+        )
+
+    base = await knowledge.get_base(session, knowledge_base_id)
+    ingested: list[DocumentResponse] = []
+    errors: list[UploadError] = []
+    request = request_id or new_id(IdPrefix.REQUEST)
+
+    for upload in files:
+        filename = safe_filename(upload.filename or "upload")
+        try:
+            data = await upload.read(settings.knowledge_upload_max_bytes + 1)
+            if len(data) > settings.knowledge_upload_max_bytes:
+                raise ValidationError(
+                    "The file is larger than the upload limit.",
+                    param="file",
+                    details={"limit_bytes": settings.knowledge_upload_max_bytes},
+                )
+            mime_type = infer_mime(filename=filename, declared=upload.content_type)
+            body = extract_text(filename=filename, data=data, mime_type=mime_type)
+            document = await knowledge.ingest(
+                session,
+                base=base,
+                title=filename,
+                body=body,
+                user_id=principal.user_id,
+                gateway=gateway,
+                organization_id=principal.organization_id,
+                request_id=request,
+                mode=mode,
+                classification=classification,
+                mime_type=mime_type,
+                size_bytes=len(data),
+            )
+            ingested.append(_doc(document))
+        except JanusError as exc:
+            errors.append(
+                UploadError(filename=filename, code=exc.code, message=exc.message)
+            )
+
+    if not ingested and errors:
+        raise ValidationError(
+            "None of the files could be ingested.",
+            param="files",
+            details={"errors": [item.model_dump() for item in errors]},
+        )
+    return UploadDocumentsResponse(data=ingested, errors=errors)
 
 
 @router.post("/{knowledge_base_id}/search")

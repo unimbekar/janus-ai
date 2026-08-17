@@ -127,13 +127,14 @@ Use this order with a prospect:
 |--------|--------|
 | **Create knowledge base** | Named KB; embedding model pinned (default `janus/mock-embed`) |
 | **Select a KB** | Target for ingest/search |
-| **Ingest text** | Chunk → embed via gateway → store in pgvector; duplicate content rejected |
+| **Upload files** | One or more `.txt` `.md` `.csv` `.json` `.html` `.pdf` `.docx`; text extracted then chunked |
+| **Ingest pasted text** | Same pipeline as files; duplicate content rejected |
 | **Search** | Ranked chunks with similarity scores |
 
 **Talking points**
 
 - Grounding for agents; citations come from these chunks.  
-- Org-isolated (RLS). Text path today (PDF parsing is roadmap).
+- Org-isolated (RLS). Paste text or upload files. PDFs need a selectable text layer (no OCR).
 
 ---
 
@@ -230,8 +231,8 @@ cp apps/web/src/app/globals.css docs/ui-mockups/janus.css
 
 ## 12. Honest scope for the deck
 
-**In the UI today:** auth, chat + history, catalog/detail, agents, knowledge (text), usage/deployments.  
+**In the UI today:** auth, chat + history, catalog/detail, agents, knowledge (paste or file upload), usage/deployments.  
 
-**Not in the UI yet (do not show as screens):** SSO login, PDF drag-drop, admin SSO/SCIM, full audit export console, GPU fleet console, Marketplace subscribe button inside the app.
+**Not in the UI yet (do not show as screens):** SSO login, OCR for scanned PDFs, admin SSO/SCIM, full audit export console, GPU fleet console, Marketplace subscribe button inside the app.
 
 Those belong in roadmap / services slides — not this UI tour.

@@ -33,6 +33,7 @@ from api_app.deps import (
     RequestIdDep,
     SessionDep,
 )
+from api_app.knowledge import KnowledgeService, ground_messages
 from api_app.models import Attachment, Conversation, Message
 from api_app.schemas import (
     AttachmentResponse,
@@ -90,7 +91,9 @@ def _attachment_response(attachment: Attachment) -> AttachmentResponse:
 
 
 def _message_response(
-    message: Message, attachments: list[Attachment] | None = None
+    message: Message,
+    attachments: list[Attachment] | None = None,
+    citations: list[dict] | None = None,
 ) -> MessageResponse:
     return MessageResponse(
         id=message.id,
@@ -110,6 +113,7 @@ def _message_response(
         error=message.error,
         parent_message_id=message.parent_message_id,
         attachments=[_attachment_response(item) for item in attachments or []],
+        citations=citations or [],
         created_at=message.created_at,
     )
 
@@ -181,10 +185,16 @@ async def get_conversation(
     conversation = await conversations.get(session, conversation_id, user_id=user_id)
     messages = await conversations.messages(session, conversation_id)
     attachments = await conversations.attachments_for(session, [item.id for item in messages])
+    citations = await KnowledgeService().citations_for(session, [item.id for item in messages])
 
     return ConversationDetailResponse(
         **_conversation_response(conversation).model_dump(),
-        messages=[_message_response(message, attachments.get(message.id)) for message in messages],
+        messages=[
+            _message_response(
+                message, attachments.get(message.id), citations.get(message.id)
+            )
+            for message in messages
+        ],
     )
 
 
@@ -257,6 +267,25 @@ async def send_message(
         history = await conversations.messages(session, conversation_id)
 
         prompt = conversations.prompt_messages(history)
+        rag = KnowledgeService()
+        hits = await rag.retrieve_for_organization(
+            session,
+            query=body.content,
+            gateway=gateway,
+            organization_id=principal.organization_id,
+            request_id=request_id,
+            mode=mode,
+            classification=classification,
+        )
+        citations = []
+        if hits:
+            prompt = ground_messages(prompt, hits)
+            citations = await rag.persist_citations(
+                session,
+                organization_id=principal.organization_id,
+                message_id=assistant_message.id,
+                hits=hits,
+            )
         turn = Turn(
             conversation_id=conversation.id,
             organization_id=conversation.organization_id,
@@ -279,6 +308,7 @@ async def send_message(
             mode=effective_mode,
             classification=effective_classification,
             request_id=request_id,
+            citations=citations,
         ),
         media_type="text/event-stream",
         headers={**STREAM_HEADERS, "X-Janus-Request-Id": request_id},
@@ -338,6 +368,29 @@ async def regenerate_message(
         assistant_message = await conversations.start_assistant_message(
             session, conversation, parent_message_id=target.id
         )
+        last_user = next(
+            (item["content"] for item in reversed(prompt) if item["role"] == "user"),
+            "",
+        )
+        rag = KnowledgeService()
+        hits = await rag.retrieve_for_organization(
+            session,
+            query=last_user,
+            gateway=gateway,
+            organization_id=principal.organization_id,
+            request_id=request_id,
+            mode=mode,
+            classification=classification,
+        )
+        citations: list[dict] = []
+        if hits:
+            prompt = ground_messages(prompt, hits)
+            citations = await rag.persist_citations(
+                session,
+                organization_id=principal.organization_id,
+                message_id=assistant_message.id,
+                hits=hits,
+            )
         turn = Turn(
             conversation_id=conversation.id,
             organization_id=conversation.organization_id,
@@ -359,6 +412,7 @@ async def regenerate_message(
             mode=effective_mode,
             classification=effective_classification,
             request_id=request_id,
+            citations=citations,
         ),
         media_type="text/event-stream",
         headers={**STREAM_HEADERS, "X-Janus-Request-Id": request_id},

@@ -25,6 +25,7 @@ interface Turn {
   content: string;
   routing?: RoutingInfo;
   streaming?: boolean;
+  citations?: { quote?: string; score?: number | null }[];
 }
 
 function titleOf(conversation: ConversationSummary): string {
@@ -74,6 +75,7 @@ export function Chat({
           detail.messages.map((message) => ({
             role: message.role === "assistant" ? "assistant" : "user",
             content: message.content,
+            citations: message.citations,
             routing:
               message.role === "assistant" && message.model
                 ? {
@@ -162,6 +164,7 @@ export function Chat({
         { content, model: selected === "auto" ? undefined : selected },
         {
           onRouting: (routing) => updateLast((turn) => ({ ...turn, routing })),
+          onCitations: (citations) => updateLast((turn) => ({ ...turn, citations })),
           onDelta: (delta) =>
             updateLast((turn) => ({ ...turn, content: turn.content + delta })),
           onError: (streamError) => {
@@ -272,6 +275,18 @@ export function Chat({
 
                   {turn.routing?.routing_explanation && !turn.streaming && (
                     <span className="explanation">{turn.routing.routing_explanation}</span>
+                  )}
+                  {turn.citations && turn.citations.length > 0 && !turn.streaming && (
+                    <ul className="cite-list">
+                      {turn.citations.map((citation, citeIndex) => (
+                        <li key={`${citation.quote}-${citeIndex}`}>
+                          {citation.quote}
+                          {citation.score != null && (
+                            <span className="muted"> · {Number(citation.score).toFixed(3)}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               ))}

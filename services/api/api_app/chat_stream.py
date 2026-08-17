@@ -90,6 +90,7 @@ class ChatRunner:
         mode: ExecutionMode,
         classification: Classification,
         request_id: str,
+        citations: list[dict] | None = None,
     ) -> AsyncIterator[bytes]:
         payload = {
             "model": model,
@@ -115,6 +116,8 @@ class ChatRunner:
                 "sequence": turn.sequence,
             },
         )
+        if citations:
+            yield sse_frame("janus.citations", {"data": citations})
 
         try:
             async for chunk in self._gateway.stream_chat_completion(

@@ -74,6 +74,13 @@ export interface ConversationSummary {
   updated_at: string;
 }
 
+export interface Citation {
+  chunk_id?: string;
+  document_id?: string;
+  quote?: string;
+  score?: number | null;
+}
+
 export interface ConversationMessage {
   id: string;
   role: Role;
@@ -86,6 +93,7 @@ export interface ConversationMessage {
   privacy: string | null;
   fallback_used: boolean;
   routing_explanation: string | null;
+  citations?: Citation[];
   created_at: string;
 }
 
@@ -127,10 +135,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (!isForm && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...init.headers },
+    headers,
   });
 
   if (!response.ok) {
@@ -243,6 +257,15 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  ingestDocumentsFromFiles: (knowledgeBaseId: string, files: File[]) => {
+    const body = new FormData();
+    for (const file of files) body.append("files", file);
+    return request<KnowledgeUploadResult>(`/v1/knowledge-bases/${knowledgeBaseId}/uploads`, {
+      method: "POST",
+      body,
+    });
+  },
+
   searchKnowledge: (knowledgeBaseId: string, query: string) =>
     request<{ data: SearchHit[] }>(`/v1/knowledge-bases/${knowledgeBaseId}/search`, {
       method: "POST",
@@ -299,6 +322,17 @@ export interface KnowledgeDocument {
   status: string;
   chunk_count: number;
   content_sha256: string | null;
+}
+
+export interface KnowledgeUploadError {
+  filename: string;
+  code: string;
+  message: string;
+}
+
+export interface KnowledgeUploadResult {
+  data: KnowledgeDocument[];
+  errors: KnowledgeUploadError[];
 }
 
 export interface SearchHit {
@@ -387,6 +421,7 @@ export interface StreamHandlers {
   onDelta: (text: string) => void;
   onError: (error: JanusError) => void;
   onMessageIds?: (ids: MessageIds) => void;
+  onCitations?: (citations: Citation[]) => void;
 }
 
 async function consumeSse(
@@ -434,6 +469,7 @@ async function consumeSse(
         const parsed = JSON.parse(data);
         if (eventName === "janus.routing") handlers.onRouting(parsed as RoutingInfo);
         else if (eventName === "janus.message") handlers.onMessageIds?.(parsed as MessageIds);
+        else if (eventName === "janus.citations") handlers.onCitations?.(parsed.data as Citation[]);
         else if (eventName === "janus.error") handlers.onError(parsed.error as JanusError);
         else if (!eventName) {
           const delta = parsed.choices?.[0]?.delta?.content;

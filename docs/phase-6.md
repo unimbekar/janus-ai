@@ -12,12 +12,12 @@ behind RLS, search returns scored chunks, agents can cite them.
 - Ingest: paragraph-then-length chunking, SHA-256 dedupe, embed via gateway with
   hash fallback when the stub/gateway returns no vectors.
 - Retrieve: cosine distance in pgvector, org-scoped by RLS.
-- Web: `/knowledge` create, ingest, search.
+- Web: `/knowledge` create, paste ingest, multi-file upload (txt/md/csv/json/html/pdf/docx), search.
 - Agents with `knowledge_search` attach citations on the run.
 
 ## Honest deferrals
 
-- PDF/DOCX/HTML parsing, hybrid lexical+vector search, reranking, and async
-  workers are not in this slice. Upload is JSON text, not multipart.
+- OCR for scanned PDFs, hybrid lexical+vector search, reranking, and async
+  workers are not in this slice.
 - Mixed embedding-dimension tables are not implemented; dimension is pinned at 8
   for the mock path.
