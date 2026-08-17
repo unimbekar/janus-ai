@@ -46,6 +46,8 @@ From the repo root on a machine with Docker:
 Then finish **§6 Build and push images** and **§7 Migrations** below — Terraform
 alone does not put application images into ECS or migrate Aurora.
 
+**Visual walkthrough of §§6–7:** [aws-images-and-migrations.md](./aws-images-and-migrations.md).
+
 Developer tools-only (DGX / existing CLI install):
 
 ```bash
@@ -191,6 +193,8 @@ First apply often takes **20–40 minutes** (Aurora + NAT + ECS).
 
 ## 6. Build and push images
 
+> Diagrams and plain-language flow: [aws-images-and-migrations.md](./aws-images-and-migrations.md#6--build-and-push-images).
+
 ECS tasks pull from ECR. Until you push, services stay unhealthy / crash-looping.
 
 ```bash
@@ -239,6 +243,8 @@ aws ecs describe-services --cluster "$CLUSTER" --region "$REGION" \
 ---
 
 ## 7. Run database migrations
+
+> Diagrams and plain-language flow: [aws-images-and-migrations.md](./aws-images-and-migrations.md#7--run-database-migrations).
 
 Migrations must run **once** against the Aurora writer before the API is useful.
 App tasks use the RLS role `janus_app`; migrations use the owner URL from Secrets Manager.

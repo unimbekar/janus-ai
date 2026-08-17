@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MarkdownBody } from "@/components/MarkdownBody";
 import { Topbar } from "@/components/Topbar";
 import {
   type ConversationSummary,
@@ -260,8 +261,12 @@ export function Chat({
                     </div>
                   )}
 
-                  <div className="message-body">
-                    {turn.content}
+                  <div className={`message-body${turn.role === "assistant" ? " markdown-body" : ""}`}>
+                    {turn.role === "assistant" ? (
+                      <MarkdownBody content={turn.content} />
+                    ) : (
+                      turn.content
+                    )}
                     {turn.streaming && <span className="cursor" />}
                   </div>
 

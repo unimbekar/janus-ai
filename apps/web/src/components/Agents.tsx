@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { MarkdownBody } from "@/components/MarkdownBody";
 import { Topbar } from "@/components/Topbar";
 import {
   api,
@@ -204,7 +205,13 @@ export function Agents({
                     <span className="badge">{run.status}</span>
                     <span className="badge">{run.step_count} steps</span>
                   </div>
-                  <pre>{run.output || "(no output)"}</pre>
+                  {run.output ? (
+                    <div className="result-md">
+                      <MarkdownBody content={run.output} />
+                    </div>
+                  ) : (
+                    <pre>(no output)</pre>
+                  )}
                   {run.citations.length > 0 && (
                     <ul className="cite-list">
                       {run.citations.map((citation, index) => (
